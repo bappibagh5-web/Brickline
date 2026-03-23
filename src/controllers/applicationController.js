@@ -21,6 +21,18 @@ async function createApplication(req, res, next) {
   }
 }
 
+async function startApplication(req, res, next) {
+  try {
+    const application = await applicationService.startApplication();
+    res.status(201).json({
+      application_id: application.id,
+      status: application.status
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getApplication(req, res, next) {
   try {
     const { id } = req.params;
@@ -30,7 +42,11 @@ async function getApplication(req, res, next) {
       throw createHttpError(404, 'Application not found.');
     }
 
-    res.status(200).json(application);
+    res.status(200).json({
+      id: application.id,
+      status: application.status,
+      application_data: application.application_data || {}
+    });
   } catch (error) {
     next(error);
   }
@@ -64,8 +80,81 @@ async function updateApplication(req, res, next) {
   }
 }
 
+async function saveApplicationStep(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { step_key: stepKey, data } = req.body || {};
+
+    if (!stepKey || typeof stepKey !== 'string') {
+      throw createHttpError(400, 'step_key is required.');
+    }
+
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw createHttpError(400, 'data must be a JSON object.');
+    }
+
+    const updatedApplication = await applicationService.saveApplicationStep(id, stepKey, data);
+
+    if (!updatedApplication) {
+      throw createHttpError(404, 'Application not found.');
+    }
+
+    res.status(200).json({
+      id: updatedApplication.id,
+      status: updatedApplication.status,
+      application_data: updatedApplication.application_data || {}
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function attachUserToApplication(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { user_id: userId } = req.body || {};
+
+    if (!userId || typeof userId !== 'string') {
+      throw createHttpError(400, 'user_id is required.');
+    }
+
+    const updatedApplication = await applicationService.attachUserToApplication(id, userId);
+
+    if (!updatedApplication) {
+      throw createHttpError(404, 'Application not found.');
+    }
+
+    res.status(200).json({
+      id: updatedApplication.id,
+      user_id: updatedApplication.user_id,
+      status: updatedApplication.status
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getApplicationResume(req, res, next) {
+  try {
+    const { id } = req.params;
+    const resume = await applicationService.getApplicationResume(id);
+
+    if (!resume) {
+      throw createHttpError(404, 'Application not found.');
+    }
+
+    res.status(200).json(resume);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createApplication,
+  startApplication,
   getApplication,
-  updateApplication
+  updateApplication,
+  saveApplicationStep,
+  attachUserToApplication,
+  getApplicationResume
 };

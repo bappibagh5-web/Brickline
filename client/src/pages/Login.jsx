@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { getStoredApplicationId } from '../funnel/session.js';
 import { getRoleHomeRoute, getUserRole } from '../lib/roleRouting.js';
 
 export default function Login() {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
   const navigate = useNavigate();
   const { user, loading, role } = useAuth();
   const [email, setEmail] = useState('');
@@ -31,6 +33,19 @@ export default function Login() {
     if (signInError) {
       setError(signInError.message);
       return;
+    }
+
+    const applicationId = getStoredApplicationId();
+    if (applicationId && data?.user?.id) {
+      await fetch(`${apiBaseUrl}/applications/${applicationId}/attach-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: data.user.id
+        })
+      }).catch(() => null);
     }
 
     const nextRole = getUserRole(data?.user);

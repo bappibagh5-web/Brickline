@@ -1,7 +1,13 @@
+import { useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import DashboardApp from './dashboard/DashboardApp.jsx';
+import { funnelConfig, funnelInitialStepId } from './funnel/config.js';
+import { useFunnel } from './funnel/FunnelContext.jsx';
+import FunnelStepPage from './funnel/FunnelStepPage.jsx';
+import { getStoredApplicationId } from './funnel/session.js';
+import { getResumeTargetRoute } from './funnel/utils.js';
 import { getRoleHomeRoute } from './lib/roleRouting.js';
 import Admin from './pages/Admin.jsx';
 import Broker from './pages/Broker.jsx';
@@ -29,9 +35,11 @@ const PAGE_TO_ROUTE = {
 };
 
 function DashboardRouteView() {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { hydrateAnswers } = useFunnel();
 
   const activePage = ROUTE_TO_PAGE[location.pathname] || 'home';
 
@@ -44,6 +52,41 @@ function DashboardRouteView() {
     await signOut();
     navigate('/login', { replace: true });
   };
+
+  useEffect(() => {
+    let ignore = false;
+
+    const resumeApplicationIfNeeded = async () => {
+      if (location.pathname !== '/dashboard') return;
+
+      const applicationId = getStoredApplicationId();
+      if (!applicationId) return;
+
+      const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/resume`);
+
+      if (!response.ok) {
+        return;
+      }
+
+      const payload = await response.json();
+      if (ignore) return;
+
+      if (payload?.data && typeof payload.data === 'object') {
+        hydrateAnswers(payload.data);
+      }
+
+      const route = getResumeTargetRoute(payload?.last_step, payload?.data || {});
+      if (!route) return;
+
+      navigate(`${route}?applicationId=${applicationId}`, { replace: true });
+    };
+
+    resumeApplicationIfNeeded();
+
+    return () => {
+      ignore = true;
+    };
+  }, [apiBaseUrl, hydrateAnswers, location.pathname, navigate]);
 
   return (
     <DashboardApp
@@ -73,6 +116,11 @@ function RoleHomeRedirect() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/m/*" element={<FunnelStepPage />} />
+      <Route
+        path="/get-rate"
+        element={<Navigate to={funnelConfig[funnelInitialStepId].route} replace />}
+      />
       <Route path="/login" element={<Login />} />
 
       <Route element={<ProtectedRoute />}>
