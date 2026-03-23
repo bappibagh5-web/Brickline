@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply m-0 bg-[#f5f6fc] font-sans text-[#1f2747];
+  }
+}
+
+@layer components {
+  .brickline-sidebar {
+    background: linear-gradient(180deg, #1737b0 0%, #1739bc 40%, #2c57e5 100%);
+  }
+
+  .topbar-btn {
+    @apply inline-flex items-center rounded-xl bg-gradient-to-r from-brickline-500 to-brickline-600 px-6 py-3 font-semibold text-white shadow-panel transition hover:brightness-105;
+  }
+
+  .panel {
+    @apply rounded-2xl border border-[#e6e8f2] bg-white shadow-[0_2px_10px_rgba(15,35,95,0.04)];
+  }
+
+  .section-title {
+    @apply text-4xl font-bold leading-tight tracking-[-0.02em] text-[#1d2548] lg:text-5xl;
+  }
+
+  .soft-input {
+    @apply h-12 w-full rounded-xl border border-[#dfe3ef] bg-white px-12 text-base font-medium text-[#323a5a] placeholder:text-[#8f96b4] focus:border-brickline-400 focus:outline-none;
+  }
+}
