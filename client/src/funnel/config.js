@@ -153,6 +153,32 @@ export const funnelConfig = {
     step_key: 'rate_calculator',
     route: '/rate-calculator',
     title: 'Rate Calculator',
+    next: 'financePropertyAddress'
+  },
+
+  financePropertyAddress: {
+    step_key: 'finance_property_address',
+    route: '/m/standardBorrower/financePropertyAddress',
+    key: 'finance_property_address',
+    title: 'What is the address of the property you would like to finance?',
+    type: 'address',
+    addressPrefix: 'finance_property',
+    next: 'preferredSigningDate'
+  },
+
+  preferredSigningDate: {
+    step_key: 'preferred_signing_date',
+    route: '/m/standardBorrower/preferredSigningDate',
+    key: 'preferred_signing_date',
+    title: 'What is your preferred signing date?',
+    type: 'signingDate',
+    next: 'dashboardExit'
+  },
+
+  dashboardExit: {
+    step_key: 'dashboard_exit',
+    route: '/dashboard',
+    title: 'Done',
     next: null
   }
 };

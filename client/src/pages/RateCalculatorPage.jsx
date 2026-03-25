@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { calculateLoan, getApplication, saveApplicationStep } from '../api/lendingApi.js';
 import CalculatorForm from '../components/CalculatorForm.jsx';
 import CalculatorResults from '../components/CalculatorResults.jsx';
+import { getStoredApplicationId, setStoredApplicationId } from '../funnel/session.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
 
 function formatCurrencyInput(value) {
@@ -31,7 +32,10 @@ function toPercentDisplay(value) {
 
 export default function RateCalculatorPage() {
   const apiBaseUrl = getApiBaseUrl();
+  const navigate = useNavigate();
   const { applicationId } = useParams();
+  const [searchParams] = useSearchParams();
+  const effectiveApplicationId = applicationId || searchParams.get('applicationId') || getStoredApplicationId() || '';
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
@@ -51,13 +55,14 @@ export default function RateCalculatorPage() {
   });
 
   useEffect(() => {
-    if (!applicationId) return;
+    if (!effectiveApplicationId) return;
+    setStoredApplicationId(effectiveApplicationId);
 
     let ignore = false;
     const loadApplication = async () => {
       setPageLoading(true);
       try {
-        const application = await getApplication(apiBaseUrl, applicationId);
+        const application = await getApplication(apiBaseUrl, effectiveApplicationId);
         if (ignore) return;
         const data = application?.application_data || {};
         setForm((prev) => ({
@@ -106,7 +111,7 @@ export default function RateCalculatorPage() {
     return () => {
       ignore = true;
     };
-  }, [apiBaseUrl, applicationId]);
+  }, [apiBaseUrl, effectiveApplicationId]);
 
   useEffect(() => {
     if (form.purchase_price === '' || form.purchase_price === null || form.purchase_price === undefined) {
@@ -171,16 +176,17 @@ export default function RateCalculatorPage() {
   };
 
   const handleChooseProduct = async (product) => {
-    if (!applicationId || !product || loading || savingProduct) return;
+    if (!effectiveApplicationId || !product || loading || savingProduct) return;
 
     setSavingProduct(true);
     setError('');
     try {
-      await saveApplicationStep(apiBaseUrl, applicationId, 'selected_loan_product', {
+      await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'selected_loan_product', {
         term: product.term,
         rate: product.rate,
         monthly_payment: product.monthly_payment
       });
+      navigate(`/m/standardBorrower/financePropertyAddress?applicationId=${effectiveApplicationId}`);
     } catch (saveError) {
       setError(saveError.message || 'Failed to save selected loan product.');
     } finally {

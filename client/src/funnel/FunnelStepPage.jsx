@@ -90,6 +90,26 @@ function getAddressFieldValue(step, answers, field) {
   return answers?.[field] || '';
 }
 
+function getTodayIsoDate() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatIsoToUsDate(isoDate) {
+  if (!isoDate || !String(isoDate).includes('-')) {
+    return 'MM/DD/YYYY';
+  }
+
+  const [year, month, day] = String(isoDate).split('-');
+  if (!year || !month || !day) {
+    return 'MM/DD/YYYY';
+  }
+  return `${month}/${day}/${year}`;
+}
+
 function AddressAutocompleteField({ value, setValue }) {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   const autocompleteServiceRef = useRef(null);
@@ -260,6 +280,68 @@ function AddressAutocompleteField({ value, setValue }) {
   );
 }
 
+function SigningDateStep({ value, setValue, onGoBack }) {
+  const [showNotice, setShowNotice] = useState(true);
+  const effectiveDate = value || getTodayIsoDate();
+  const prettyDate = formatIsoToUsDate(effectiveDate);
+
+  return (
+    <div className="mt-5 space-y-4">
+      <p className="text-[15px] text-[#374151]">
+        Most borrowers can close and fund on the same day.
+      </p>
+      <p className="text-[15px] text-[#374151]">
+        Borrowers in Alaska, Arizona, California, Hawaii, Idaho, Nevada, New Mexico, Oregon, and
+        Washington may sign and fund a minimum of 1 day after signing.
+      </p>
+
+      <div className="rounded-md border border-[#0f766e] bg-[#e6f5f1] px-4 py-3 text-[15px] text-[#1f2937]">
+        Based on the selected date and the property's location, your estimated signing date will be{' '}
+        <span className="font-semibold">{prettyDate}</span>. You should fund the same day.
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[240px_1fr]">
+        <label className="grid gap-1">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[#6b7280]">MM/DD/YYYY</span>
+          <input
+            type="date"
+            value={effectiveDate}
+            onChange={(event) => setValue(event.target.value)}
+            className="h-12 rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-3 text-[24px] leading-none text-[#334155] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+          />
+        </label>
+
+        {showNotice ? (
+          <aside className="relative border border-[#d6d9db] bg-[#f8f8f8] px-5 py-4 shadow-[0_2px_3px_rgba(0,0,0,0.08)]">
+            <button
+              type="button"
+              onClick={() => setShowNotice(false)}
+              className="absolute right-3 top-2 text-sm text-[#9ca3af] hover:text-[#6b7280]"
+              aria-label="Close notice"
+            >
+              ×
+            </button>
+            <h3 className="text-[24px] font-semibold leading-tight text-[#111827]">Closing Dates Can Change</h3>
+            <p className="mt-2 text-[15px] leading-6 text-[#374151]">
+              Please note that closing dates can change due to many factors including: time taken to
+              complete full loan application, third party tasks (title, insurance, etc), amended purchase
+              &amp; sale agreements. Please contact your sales rep if you have any questions.
+            </p>
+          </aside>
+        ) : null}
+      </div>
+
+      <button
+        type="button"
+        onClick={onGoBack}
+        className="text-[15px] font-medium text-[#0f766e] underline underline-offset-2 hover:text-[#0d5f59]"
+      >
+        Go Back
+      </button>
+    </div>
+  );
+}
+
 function getStepValue(step, answers) {
   if (step.type === 'name') {
     return {
@@ -280,11 +362,18 @@ function getStepValue(step, answers) {
     };
   }
 
+  if (step.type === 'signingDate') {
+    if (step.key && answers[step.key]) {
+      return answers[step.key];
+    }
+    return getTodayIsoDate();
+  }
+
   if (!step.key) return null;
   return answers[step.key] ?? '';
 }
 
-function StepRenderer({ step, value, setValue }) {
+function StepRenderer({ step, value, setValue, onGoBack }) {
   if (step.options) {
     return (
       <div className="mt-6 grid gap-2.5">
@@ -368,6 +457,16 @@ function StepRenderer({ step, value, setValue }) {
     return <AddressAutocompleteField value={value} setValue={setValue} />;
   }
 
+  if (step.type === 'signingDate') {
+    return (
+      <SigningDateStep
+        value={value}
+        setValue={setValue}
+        onGoBack={onGoBack}
+      />
+    );
+  }
+
   return null;
 }
 
@@ -376,7 +475,7 @@ export default function FunnelStepPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { answers, setAnswer } = useFunnel();
+  const { answers, setAnswer, hydrateAnswers } = useFunnel();
   const { user } = useAuth();
   const [applicationId, setApplicationId] = useState(
     () => searchParams.get('applicationId') || getStoredApplicationId() || ''
@@ -428,6 +527,15 @@ export default function FunnelStepPage() {
           setApplicationId(existingApplicationId);
           setStoredApplicationId(existingApplicationId);
 
+          const applicationResponse = await fetch(`${apiBaseUrl}/applications/${existingApplicationId}`);
+          if (applicationResponse.ok && !ignore) {
+            const applicationPayload = await applicationResponse.json().catch(() => ({}));
+            const applicationData = applicationPayload?.application_data;
+            if (applicationData && typeof applicationData === 'object') {
+              hydrateAnswers(applicationData);
+            }
+          }
+
           if (!fromUrl) {
             const nextParams = new URLSearchParams(searchParams);
             nextParams.set('applicationId', existingApplicationId);
@@ -475,7 +583,7 @@ export default function FunnelStepPage() {
     return () => {
       ignore = true;
     };
-  }, [apiBaseUrl, searchParams, setSearchParams]);
+  }, [apiBaseUrl, hydrateAnswers, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (stepId !== 'accountCreationFlow' && checkEmailSaved) {
@@ -729,6 +837,7 @@ export default function FunnelStepPage() {
               step={step}
               value={value}
               setValue={setStepValue}
+              onGoBack={handleBack}
             />
 
             {stepId === 'accountCreationFlow' ? (
