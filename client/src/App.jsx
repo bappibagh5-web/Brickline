@@ -14,7 +14,6 @@ import Admin from './pages/Admin.jsx';
 import Broker from './pages/Broker.jsx';
 import Lender from './pages/Lender.jsx';
 import Login from './pages/Login.jsx';
-import EligibilityPage from './pages/EligibilityPage.jsx';
 import RateCalculatorPage from './pages/RateCalculatorPage.jsx';
 import SetPassword from './pages/SetPassword.jsx';
 import SuperAdmin from './pages/SuperAdmin.jsx';
@@ -197,7 +196,6 @@ export default function App() {
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['borrower']} />}>
-        <Route path="/apply/:loanType/:applicationId/eligibility" element={<EligibilityPage />} />
         <Route path="/loan-requests" element={<DashboardRouteView />} />
         <Route path="/documents" element={<DashboardRouteView />} />
         <Route path="/account-documents" element={<Navigate to="/documents" replace />} />

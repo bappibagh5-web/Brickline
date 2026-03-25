@@ -91,7 +91,7 @@ export default function CalculatorForm({
         <label className="grid gap-1.5">
           <FieldLabel>Purchase Price</FieldLabel>
           <input
-            type="number"
+            type="text"
             value={form.purchase_price}
             onChange={(event) => onFormChange('purchase_price', event.target.value)}
             className={inputClass}
@@ -124,7 +124,7 @@ export default function CalculatorForm({
         <label className="grid gap-1.5">
           <FieldLabel>Estimated Cost of Rehab</FieldLabel>
           <input
-            type="number"
+            type="text"
             value={form.rehab_budget}
             onChange={(event) => onFormChange('rehab_budget', event.target.value)}
             className={inputClass}
@@ -133,7 +133,7 @@ export default function CalculatorForm({
         <label className="grid gap-1.5">
           <FieldLabel>After Repair Value (ARV)</FieldLabel>
           <input
-            type="number"
+            type="text"
             value={form.comp_value}
             onChange={(event) => onFormChange('comp_value', event.target.value)}
             className={inputClass}

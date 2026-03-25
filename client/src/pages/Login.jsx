@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getStoredApplicationId } from '../funnel/session.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
-import { getEligibilityRoute } from '../lib/applicationFlow.js';
+import { getPostLoginFunnelRoute } from '../lib/applicationFlow.js';
 import { getRoleHomeRoute, getUserRole } from '../lib/roleRouting.js';
 
 export default function Login() {
@@ -14,10 +14,44 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resolvingRedirect, setResolvingRedirect] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (loading || !user) return;
+
+    let ignore = false;
+    const resolveAuthRoute = async () => {
+      setResolvingRedirect(true);
+      const applicationId = getStoredApplicationId();
+
+      if (applicationId && role === 'borrower') {
+        const nextRoute = await getPostLoginFunnelRoute(apiBaseUrl, applicationId);
+        if (!ignore) {
+          navigate(nextRoute || '/m/standardBorrower/leadPropertyAddress', { replace: true });
+        }
+        return;
+      }
+
+      if (!ignore) {
+        navigate(getRoleHomeRoute(role), { replace: true });
+      }
+    };
+
+    resolveAuthRoute();
+    return () => {
+      ignore = true;
+    };
+  }, [apiBaseUrl, loading, navigate, role, user]);
+
   if (!loading && user) {
-    return <Navigate to={getRoleHomeRoute(role)} replace />;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f5f6fc] px-4">
+        <p className="text-sm text-[#667397]">
+          {resolvingRedirect ? 'Continuing your application...' : 'Redirecting...'}
+        </p>
+      </div>
+    );
   }
 
   const handleSubmit = async (event) => {
@@ -52,8 +86,8 @@ export default function Login() {
 
     const nextRole = getUserRole(data?.user);
     if (applicationId && nextRole === 'borrower') {
-      const nextRoute = await getEligibilityRoute(apiBaseUrl, applicationId);
-      navigate(nextRoute, { replace: true });
+      const nextRoute = await getPostLoginFunnelRoute(apiBaseUrl, applicationId);
+      navigate(nextRoute || '/m/standardBorrower/leadPropertyAddress', { replace: true });
       return;
     }
 

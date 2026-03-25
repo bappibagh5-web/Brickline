@@ -68,12 +68,26 @@ function mapPlaceToAddress(place) {
 
   return {
     address_line_1: addressLine1,
+    address_line_2: '',
     city,
     state,
     zip,
     full_address: place?.formatted_address || addressLine1,
     place_id: place?.place_id || ''
   };
+}
+
+function getAddressFieldKey(step, field) {
+  if (!step?.addressPrefix) return field;
+  return `${step.addressPrefix}_${field}`;
+}
+
+function getAddressFieldValue(step, answers, field) {
+  const prefixedKey = getAddressFieldKey(step, field);
+  if (answers?.[prefixedKey] !== undefined && answers?.[prefixedKey] !== null) {
+    return answers[prefixedKey];
+  }
+  return answers?.[field] || '';
 }
 
 function AddressAutocompleteField({ value, setValue }) {
@@ -173,8 +187,9 @@ function AddressAutocompleteField({ value, setValue }) {
   };
 
   return (
-    <div className="mt-6 space-y-2">
-      <div className="relative">
+    <div className="mt-6 space-y-3">
+      <label className="grid gap-1">
+        <span className="text-xs font-medium uppercase tracking-wide text-[#5f6b8f]">Address Line 1</span>
         <input
           type="text"
           value={query}
@@ -183,6 +198,7 @@ function AddressAutocompleteField({ value, setValue }) {
             setQuery(nextQuery);
             setValue({
               address_line_1: '',
+              address_line_2: value?.address_line_2 || '',
               city: '',
               state: '',
               zip: '',
@@ -193,8 +209,10 @@ function AddressAutocompleteField({ value, setValue }) {
           placeholder="Start typing property address..."
           className="h-11 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[14px] text-[#475569] placeholder:text-[#8d96b6] transition-all duration-150 focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
         />
-        {loading ? <p className="mt-1 text-xs text-[#5f6b8f]">Searching address...</p> : null}
+      </label>
 
+      <div className="relative">
+        {loading ? <p className="text-xs text-[#5f6b8f]">Searching address...</p> : null}
         {suggestions.length > 0 ? (
           <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto border border-[#d6dbea] bg-white shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
             {suggestions.map((suggestion) => (
@@ -211,10 +229,29 @@ function AddressAutocompleteField({ value, setValue }) {
         ) : null}
       </div>
 
+      <label className="grid gap-1">
+        <span className="text-xs font-medium uppercase tracking-wide text-[#5f6b8f]">Address Line 2</span>
+        <input
+          value={value?.address_line_2 || ''}
+          onChange={(event) => setValue({ ...value, address_line_2: event.target.value })}
+          placeholder="Apartment, suite, unit (optional)"
+          className="h-11 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[14px] text-[#475569] placeholder:text-[#8d96b6] transition-all duration-150 focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+        />
+      </label>
+
       <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
-        <input readOnly value={value?.city || ''} placeholder="City" className="h-10 rounded-none border border-[#dfe3ef] bg-[#f8faff] px-3 text-sm text-[#44517a]" />
-        <input readOnly value={value?.state || ''} placeholder="State" className="h-10 rounded-none border border-[#dfe3ef] bg-[#f8faff] px-3 text-sm text-[#44517a]" />
-        <input readOnly value={value?.zip || ''} placeholder="Zip" className="h-10 rounded-none border border-[#dfe3ef] bg-[#f8faff] px-3 text-sm text-[#44517a]" />
+        <label className="grid gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-[#5f6b8f]">City</span>
+          <input readOnly value={value?.city || ''} className="h-10 rounded-none border border-[#dfe3ef] bg-[#f8faff] px-3 text-sm text-[#44517a]" />
+        </label>
+        <label className="grid gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-[#5f6b8f]">State</span>
+          <input readOnly value={value?.state || ''} className="h-10 rounded-none border border-[#dfe3ef] bg-[#f8faff] px-3 text-sm text-[#44517a]" />
+        </label>
+        <label className="grid gap-1">
+          <span className="text-xs font-medium uppercase tracking-wide text-[#5f6b8f]">Zip</span>
+          <input readOnly value={value?.zip || ''} className="h-10 rounded-none border border-[#dfe3ef] bg-[#f8faff] px-3 text-sm text-[#44517a]" />
+        </label>
       </div>
 
       {inputError ? <p className="text-xs text-[#b63d3d]">{inputError}</p> : null}
@@ -233,12 +270,13 @@ function getStepValue(step, answers) {
 
   if (step.type === 'address') {
     return {
-      address_line_1: answers.address_line_1 || '',
-      city: answers.city || '',
-      state: answers.state || '',
-      zip: answers.zip || '',
-      full_address: answers.full_address || answers.property_address || '',
-      place_id: answers.place_id || ''
+      address_line_1: getAddressFieldValue(step, answers, 'address_line_1'),
+      address_line_2: getAddressFieldValue(step, answers, 'address_line_2'),
+      city: getAddressFieldValue(step, answers, 'city'),
+      state: getAddressFieldValue(step, answers, 'state'),
+      zip: getAddressFieldValue(step, answers, 'zip'),
+      full_address: getAddressFieldValue(step, answers, 'full_address') || answers.property_address || '',
+      place_id: getAddressFieldValue(step, answers, 'place_id')
     };
   }
 
@@ -491,11 +529,19 @@ export default function FunnelStepPage() {
 
     if (step.type === 'address') {
       setAnswer('address_line_1', nextValue?.address_line_1 || '');
+      setAnswer('address_line_2', nextValue?.address_line_2 || '');
       setAnswer('city', nextValue?.city || '');
       setAnswer('state', nextValue?.state || '');
       setAnswer('zip', nextValue?.zip || '');
       setAnswer('full_address', nextValue?.full_address || '');
       setAnswer('place_id', nextValue?.place_id || '');
+      setAnswer(getAddressFieldKey(step, 'address_line_1'), nextValue?.address_line_1 || '');
+      setAnswer(getAddressFieldKey(step, 'address_line_2'), nextValue?.address_line_2 || '');
+      setAnswer(getAddressFieldKey(step, 'city'), nextValue?.city || '');
+      setAnswer(getAddressFieldKey(step, 'state'), nextValue?.state || '');
+      setAnswer(getAddressFieldKey(step, 'zip'), nextValue?.zip || '');
+      setAnswer(getAddressFieldKey(step, 'full_address'), nextValue?.full_address || '');
+      setAnswer(getAddressFieldKey(step, 'place_id'), nextValue?.place_id || '');
       setAnswer('property_address', nextValue?.full_address || '');
       return;
     }
@@ -516,13 +562,29 @@ export default function FunnelStepPage() {
     }
 
     if (step.type === 'address') {
-      return {
+      const baseAddress = {
         address_line_1: String(value?.address_line_1 || '').trim(),
+        address_line_2: String(value?.address_line_2 || '').trim(),
         city: String(value?.city || '').trim(),
         state: String(value?.state || '').trim(),
         zip: String(value?.zip || '').trim(),
         full_address: String(value?.full_address || '').trim(),
         place_id: String(value?.place_id || '').trim()
+      };
+
+      if (!step.addressPrefix) {
+        return baseAddress;
+      }
+
+      return {
+        ...baseAddress,
+        [getAddressFieldKey(step, 'address_line_1')]: baseAddress.address_line_1,
+        [getAddressFieldKey(step, 'address_line_2')]: baseAddress.address_line_2,
+        [getAddressFieldKey(step, 'city')]: baseAddress.city,
+        [getAddressFieldKey(step, 'state')]: baseAddress.state,
+        [getAddressFieldKey(step, 'zip')]: baseAddress.zip,
+        [getAddressFieldKey(step, 'full_address')]: baseAddress.full_address,
+        [getAddressFieldKey(step, 'place_id')]: baseAddress.place_id
       };
     }
 
@@ -599,6 +661,41 @@ export default function FunnelStepPage() {
     window.open('https://mail.google.com', '_blank', 'noopener,noreferrer');
   };
 
+  const handleSkip = async () => {
+    if (!step.allowSkip || saving || initializing) return;
+
+    setError('');
+    setSaving(true);
+    try {
+      if (applicationId) {
+        await fetch(`${apiBaseUrl}/applications/${applicationId}/save-step`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            step_key: stepId,
+            data: { skipped: true }
+          })
+        }).catch(() => null);
+      }
+
+      const nextRoute = getNextRoute(stepId, value, answers, {
+        isAuthenticated: Boolean(user)
+      });
+
+      if (!nextRoute) return;
+
+      if (applicationId) {
+        navigate(`${nextRoute}?applicationId=${applicationId}`);
+        return;
+      }
+      navigate(nextRoute);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleBack = () => {
     if (stepId === funnelInitialStepId) return;
     navigate(-1);
@@ -643,14 +740,26 @@ export default function FunnelStepPage() {
                 Open your email
               </button>
             ) : step.next ? (
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={!canProceed || initializing || saving}
-                className="mt-6 ml-auto inline-flex h-10 min-w-[88px] items-center justify-center rounded bg-[#2f54eb] px-4 text-sm font-semibold text-white transition-all duration-150 hover:bg-[#2246d0] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : 'Next'}
-              </button>
+              <div className="mt-6 flex items-center gap-3">
+                {step.allowSkip ? (
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    disabled={initializing || saving}
+                    className="inline-flex h-10 min-w-[88px] items-center justify-center rounded border border-[#9aa4ae] bg-white px-4 text-sm font-semibold text-[#475569] transition-all duration-150 hover:bg-[#f3f6ff] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Skip
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={!canProceed || initializing || saving}
+                  className="inline-flex h-10 min-w-[88px] items-center justify-center rounded bg-[#2f54eb] px-4 text-sm font-semibold text-white transition-all duration-150 hover:bg-[#2246d0] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Next'}
+                </button>
+              </div>
             ) : (
               <div className="mt-6 max-w-[460px] rounded-md border border-[#cfd8ff] bg-[#eef2ff] p-3 text-center text-sm font-semibold text-[#1f3aa0]">
                 Funnel complete

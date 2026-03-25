@@ -1,31 +1,32 @@
-function mapLoanProgramToLoanType(loanProgram) {
-  if (loanProgram === 'rental') {
-    return 'rental';
-  }
+import { getResumeTargetRoute } from '../funnel/utils.js';
 
-  if (loanProgram === 'new_construction') {
-    return 'construction';
-  }
-
-  return 'bridge';
+function appendAuthSource(route, applicationId) {
+  const connector = route.includes('?') ? '&' : '?';
+  return `${route}${connector}applicationId=${applicationId}&from=auth0`;
 }
 
-export async function resolveLoanType(apiBaseUrl, applicationId) {
-  if (!applicationId) return 'bridge';
+export async function getPostLoginFunnelRoute(apiBaseUrl, applicationId) {
+  if (!applicationId) {
+    return null;
+  }
 
   try {
-    const response = await fetch(`${apiBaseUrl}/applications/${applicationId}`);
-    if (!response.ok) return 'bridge';
+    const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/resume`);
+    if (!response.ok) {
+      return appendAuthSource('/m/standardBorrower/leadPropertyAddress', applicationId);
+    }
 
     const payload = await response.json();
-    const loanProgram = payload?.application_data?.loan_program;
-    return mapLoanProgramToLoanType(loanProgram);
-  } catch (_error) {
-    return 'bridge';
-  }
-}
+    const nextRoute = getResumeTargetRoute(payload?.last_step, payload?.data || {}, {
+      isAuthenticated: true
+    });
 
-export async function getEligibilityRoute(apiBaseUrl, applicationId) {
-  const loanType = await resolveLoanType(apiBaseUrl, applicationId);
-  return `/apply/${loanType}/${applicationId}/eligibility`;
+    if (!nextRoute) {
+      return appendAuthSource('/m/standardBorrower/leadPropertyAddress', applicationId);
+    }
+
+    return appendAuthSource(nextRoute, applicationId);
+  } catch (_error) {
+    return appendAuthSource('/m/standardBorrower/leadPropertyAddress', applicationId);
+  }
 }
