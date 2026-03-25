@@ -50,3 +50,45 @@ export async function getFields(apiBaseUrl, product, groupName) {
 
   return Array.isArray(payload) ? payload : [];
 }
+
+export async function calculateLoan(apiBaseUrl, input) {
+  const response = await fetch(`${apiBaseUrl}/calculator/calculate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(input)
+  });
+
+  const payload = await parseJson(response);
+
+  if (!response.ok) {
+    throw new Error(payload?.error || 'Failed to calculate loan metrics.');
+  }
+
+  if (!payload?.success || !payload?.data) {
+    throw new Error('Invalid calculator response.');
+  }
+
+  return payload.data;
+}
+
+export async function saveApplicationStep(apiBaseUrl, applicationId, stepKey, data) {
+  const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/save-step`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      step_key: stepKey,
+      data
+    })
+  });
+
+  const payload = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(payload?.error || 'Failed to save step.');
+  }
+
+  return payload;
+}

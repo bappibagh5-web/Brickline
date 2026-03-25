@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const applicationRoutes = require('./routes/applicationRoutes');
+const calculatorRoutes = require('./routes/calculatorRoutes');
 const conditionRoutes = require('./routes/conditionRoutes');
 const fieldRoutes = require('./routes/fieldRoutes');
 
@@ -35,6 +36,7 @@ app.use(cors({
 }));
 app.options('*', cors());
 app.use(applicationRoutes);
+app.use(calculatorRoutes);
 app.use(conditionRoutes);
 app.use(fieldRoutes);
 

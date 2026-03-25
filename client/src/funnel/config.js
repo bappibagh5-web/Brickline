@@ -132,8 +132,7 @@ export const funnelConfig = {
     route: '/m/getRate/propertyAddress',
     key: 'property_address',
     title: 'What is the address of the property you would like to finance?',
-    type: 'input',
-    inputType: 'text',
+    type: 'address',
     next: 'rateCalculator'
   },
 

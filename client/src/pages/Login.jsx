@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getStoredApplicationId } from '../funnel/session.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
+import { getEligibilityRoute } from '../lib/applicationFlow.js';
 import { getRoleHomeRoute, getUserRole } from '../lib/roleRouting.js';
 
 export default function Login() {
@@ -50,6 +51,12 @@ export default function Login() {
     }
 
     const nextRole = getUserRole(data?.user);
+    if (applicationId && nextRole === 'borrower') {
+      const nextRoute = await getEligibilityRoute(apiBaseUrl, applicationId);
+      navigate(nextRoute, { replace: true });
+      return;
+    }
+
     navigate(getRoleHomeRoute(nextRole), { replace: true });
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -19,11 +19,226 @@ const US_STATES = [
   'VA', 'WA', 'WV', 'WI', 'WY'
 ];
 
+const GOOGLE_SCRIPT_ID = 'brickline-google-places-script';
+
+function loadGooglePlacesScript(apiKey) {
+  return new Promise((resolve, reject) => {
+    if (!apiKey) {
+      reject(new Error('Missing VITE_GOOGLE_MAPS_API_KEY.'));
+      return;
+    }
+
+    if (window.google?.maps?.places) {
+      resolve(window.google);
+      return;
+    }
+
+    const existing = document.getElementById(GOOGLE_SCRIPT_ID);
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.google));
+      existing.addEventListener('error', () => reject(new Error('Failed to load Google Places script.')));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = GOOGLE_SCRIPT_ID;
+    script.async = true;
+    script.defer = true;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
+    script.onload = () => resolve(window.google);
+    script.onerror = () => reject(new Error('Failed to load Google Places script.'));
+    document.head.appendChild(script);
+  });
+}
+
+function mapPlaceToAddress(place) {
+  const components = Array.isArray(place?.address_components) ? place.address_components : [];
+  const findByType = (type) => components.find((component) => component.types?.includes(type));
+
+  const streetNumber = findByType('street_number')?.long_name || '';
+  const route = findByType('route')?.long_name || '';
+  const city =
+    findByType('locality')?.long_name ||
+    findByType('postal_town')?.long_name ||
+    findByType('sublocality')?.long_name ||
+    '';
+  const state = findByType('administrative_area_level_1')?.short_name || '';
+  const zip = findByType('postal_code')?.long_name || '';
+  const addressLine1 = [streetNumber, route].filter(Boolean).join(' ').trim();
+
+  return {
+    address_line_1: addressLine1,
+    city,
+    state,
+    zip,
+    full_address: place?.formatted_address || addressLine1,
+    place_id: place?.place_id || ''
+  };
+}
+
+function AddressAutocompleteField({ value, setValue }) {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const autocompleteServiceRef = useRef(null);
+  const placesServiceRef = useRef(null);
+  const [query, setQuery] = useState(value?.full_address || '');
+  const [suggestions, setSuggestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [inputError, setInputError] = useState('');
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (value?.full_address && value.full_address !== query) {
+      setQuery(value.full_address);
+    }
+  }, [query, value?.full_address]);
+
+  useEffect(() => {
+    let ignore = false;
+    loadGooglePlacesScript(apiKey)
+      .then((google) => {
+        if (ignore) return;
+        autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
+        placesServiceRef.current = new google.maps.places.PlacesService(document.createElement('div'));
+        setReady(true);
+      })
+      .catch((error) => {
+        if (ignore) return;
+        setInputError(error.message || 'Google Places failed to load.');
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (!ready || !autocompleteServiceRef.current) return;
+
+    const input = String(query || '').trim();
+    if (input.length < 3) {
+      setSuggestions([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setInputError('');
+    const timer = setTimeout(() => {
+      autocompleteServiceRef.current.getPlacePredictions(
+        {
+          input,
+          types: ['address'],
+          componentRestrictions: { country: 'us' }
+        },
+        (predictions, status) => {
+          setLoading(false);
+          const okStatus = window.google?.maps?.places?.PlacesServiceStatus?.OK;
+          if (status !== okStatus || !Array.isArray(predictions)) {
+            setSuggestions([]);
+            return;
+          }
+          setSuggestions(predictions);
+        }
+      );
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [query, ready]);
+
+  const handleSelectSuggestion = (prediction) => {
+    const placeId = prediction?.place_id;
+    if (!placeId || !placesServiceRef.current) return;
+
+    setLoading(true);
+    setInputError('');
+    placesServiceRef.current.getDetails(
+      {
+        placeId,
+        fields: ['address_components', 'formatted_address', 'place_id']
+      },
+      (place, status) => {
+        setLoading(false);
+        const okStatus = window.google?.maps?.places?.PlacesServiceStatus?.OK;
+        if (status !== okStatus || !place) {
+          setInputError('Could not load address details. Try another suggestion.');
+          return;
+        }
+
+        const mapped = mapPlaceToAddress(place);
+        setValue(mapped);
+        setQuery(mapped.full_address || prediction.description || '');
+        setSuggestions([]);
+      }
+    );
+  };
+
+  return (
+    <div className="mt-6 space-y-2">
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(event) => {
+            const nextQuery = event.target.value;
+            setQuery(nextQuery);
+            setValue({
+              address_line_1: '',
+              city: '',
+              state: '',
+              zip: '',
+              full_address: nextQuery,
+              place_id: ''
+            });
+          }}
+          placeholder="Start typing property address..."
+          className="h-11 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[14px] text-[#475569] placeholder:text-[#8d96b6] transition-all duration-150 focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+        />
+        {loading ? <p className="mt-1 text-xs text-[#5f6b8f]">Searching address...</p> : null}
+
+        {suggestions.length > 0 ? (
+          <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto border border-[#d6dbea] bg-white shadow-[0_8px_20px_rgba(0,0,0,0.08)]">
+            {suggestions.map((suggestion) => (
+              <button
+                key={suggestion.place_id}
+                type="button"
+                onClick={() => handleSelectSuggestion(suggestion)}
+                className="block w-full border-b border-[#eef2fb] px-3 py-2 text-left text-sm text-[#27345d] hover:bg-[#f4f7ff]"
+              >
+                {suggestion.description}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+        <input readOnly value={value?.city || ''} placeholder="City" className="h-10 rounded-none border border-[#dfe3ef] bg-[#f8faff] px-3 text-sm text-[#44517a]" />
+        <input readOnly value={value?.state || ''} placeholder="State" className="h-10 rounded-none border border-[#dfe3ef] bg-[#f8faff] px-3 text-sm text-[#44517a]" />
+        <input readOnly value={value?.zip || ''} placeholder="Zip" className="h-10 rounded-none border border-[#dfe3ef] bg-[#f8faff] px-3 text-sm text-[#44517a]" />
+      </div>
+
+      {inputError ? <p className="text-xs text-[#b63d3d]">{inputError}</p> : null}
+      <p className="text-xs text-[#5f6b8f]">Please choose an address from suggestions.</p>
+    </div>
+  );
+}
+
 function getStepValue(step, answers) {
   if (step.type === 'name') {
     return {
       first_name: answers.first_name || '',
       last_name: answers.last_name || ''
+    };
+  }
+
+  if (step.type === 'address') {
+    return {
+      address_line_1: answers.address_line_1 || '',
+      city: answers.city || '',
+      state: answers.state || '',
+      zip: answers.zip || '',
+      full_address: answers.full_address || answers.property_address || '',
+      place_id: answers.place_id || ''
     };
   }
 
@@ -111,6 +326,10 @@ function StepRenderer({ step, value, setValue }) {
     );
   }
 
+  if (step.type === 'address') {
+    return <AddressAutocompleteField value={value} setValue={setValue} />;
+  }
+
   return null;
 }
 
@@ -144,6 +363,10 @@ export default function FunnelStepPage() {
       const firstName = String(value?.first_name || '').trim();
       const lastName = String(value?.last_name || '').trim();
       return Boolean(firstName && lastName);
+    }
+
+    if (step.type === 'address') {
+      return Boolean(String(value?.place_id || '').trim());
     }
 
     if (!step.key) {
@@ -266,6 +489,17 @@ export default function FunnelStepPage() {
       return;
     }
 
+    if (step.type === 'address') {
+      setAnswer('address_line_1', nextValue?.address_line_1 || '');
+      setAnswer('city', nextValue?.city || '');
+      setAnswer('state', nextValue?.state || '');
+      setAnswer('zip', nextValue?.zip || '');
+      setAnswer('full_address', nextValue?.full_address || '');
+      setAnswer('place_id', nextValue?.place_id || '');
+      setAnswer('property_address', nextValue?.full_address || '');
+      return;
+    }
+
     if (!step.key) return;
     setAnswer(step.key, nextValue);
   };
@@ -278,6 +512,17 @@ export default function FunnelStepPage() {
         first_name: firstName,
         last_name: lastName,
         name: `${firstName} ${lastName}`.trim()
+      };
+    }
+
+    if (step.type === 'address') {
+      return {
+        address_line_1: String(value?.address_line_1 || '').trim(),
+        city: String(value?.city || '').trim(),
+        state: String(value?.state || '').trim(),
+        zip: String(value?.zip || '').trim(),
+        full_address: String(value?.full_address || '').trim(),
+        place_id: String(value?.place_id || '').trim()
       };
     }
 

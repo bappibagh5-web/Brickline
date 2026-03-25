@@ -8,6 +8,7 @@ import {
   setStoredFunnelEmail
 } from '../funnel/session.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
+import { getEligibilityRoute } from '../lib/applicationFlow.js';
 import { getRoleHomeRoute } from '../lib/roleRouting.js';
 import { supabase } from '../lib/supabaseClient.js';
 
@@ -146,6 +147,12 @@ export default function SetPassword() {
       }
 
       setStoredFunnelEmail(email.trim());
+      if (applicationId) {
+        const nextRoute = await getEligibilityRoute(apiBaseUrl, applicationId);
+        navigate(nextRoute, { replace: true });
+        return;
+      }
+
       navigate('/dashboard', { replace: true });
     } catch (submitError) {
       setError(submitError.message || 'Failed to create account.');
