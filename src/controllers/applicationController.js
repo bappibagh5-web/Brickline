@@ -1,4 +1,5 @@
 const applicationService = require('../services/applicationService');
+const { generateLoanSummaryPdf } = require('../services/loanSummaryPdfService');
 
 function createHttpError(status, message) {
   const error = new Error(message);
@@ -83,7 +84,8 @@ async function updateApplication(req, res, next) {
 async function saveApplicationStep(req, res, next) {
   try {
     const { id } = req.params;
-    const { step_key: stepKey, data } = req.body || {};
+    const { step_key: stepKeyValue, step: stepAlias, data } = req.body || {};
+    const stepKey = stepKeyValue || stepAlias;
 
     if (!stepKey || typeof stepKey !== 'string') {
       throw createHttpError(400, 'step_key is required.');
@@ -105,6 +107,24 @@ async function saveApplicationStep(req, res, next) {
       application_data: result.application.application_data || {},
       email_sent: result.email_sent || false
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function generateLoanSummary(req, res, next) {
+  try {
+    const { id } = req.params;
+    const application = await applicationService.getApplicationById(id);
+
+    if (!application) {
+      throw createHttpError(404, 'Application not found.');
+    }
+
+    const pdfBuffer = await generateLoanSummaryPdf(application);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="loan-summary-${id}.pdf"`);
+    res.status(200).send(pdfBuffer);
   } catch (error) {
     next(error);
   }
@@ -180,13 +200,34 @@ async function getApplicationResume(req, res, next) {
   }
 }
 
+async function submitApplication(req, res, next) {
+  try {
+    const { id } = req.params;
+    const updatedApplication = await applicationService.submitApplication(id);
+
+    if (!updatedApplication) {
+      throw createHttpError(404, 'Application not found.');
+    }
+
+    res.status(200).json({
+      success: true,
+      id: updatedApplication.id,
+      status: updatedApplication.status
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   createApplication,
   startApplication,
   getApplication,
   updateApplication,
   saveApplicationStep,
+  generateLoanSummary,
   attachUserToApplication,
   createAccountForApplication,
-  getApplicationResume
+  getApplicationResume,
+  submitApplication
 };

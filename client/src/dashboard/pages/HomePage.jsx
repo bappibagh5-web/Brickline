@@ -2,7 +2,7 @@ import { Clock3 } from 'lucide-react';
 import Card from '../components/Card.jsx';
 import LoanCard from '../components/LoanCard.jsx';
 
-export default function HomePage({ loan, recentActivity, onContinueLoan, onStartNewLoan }) {
+export default function HomePage({ loan, activeCount = 0, recentActivity, onContinueLoan, onStartNewLoan }) {
   return (
     <section className="space-y-4">
       <div>
@@ -12,7 +12,7 @@ export default function HomePage({ loan, recentActivity, onContinueLoan, onStart
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card className="p-4">
           <h3>Active Loan Requests</h3>
-          <p className="mt-2 text-sm text-[#5f6b8f]">1 active</p>
+          <p className="mt-2 text-sm text-[#5f6b8f]">{activeCount} active</p>
         </Card>
         <Card className="p-4">
           <h3>Open Tasks</h3>
@@ -28,7 +28,7 @@ export default function HomePage({ loan, recentActivity, onContinueLoan, onStart
               Start New Loan
             </button>
           </div>
-          <LoanCard loan={loan} compact onContinue={onContinueLoan} />
+          {loan ? <LoanCard loan={loan} compact onContinue={onContinueLoan} /> : null}
         </div>
 
         <Card className="p-4 lg:col-span-4">

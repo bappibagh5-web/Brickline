@@ -172,7 +172,17 @@ export const funnelConfig = {
     key: 'preferred_signing_date',
     title: 'What is your preferred signing date?',
     type: 'signingDate',
-    next: 'dashboardExit'
+    next: 'reviewSubmit'
+  },
+
+  reviewSubmit: {
+    step_key: 'review_submit',
+    route: '/m/standardBorrower/reviewSubmit',
+    key: 'review_submit',
+    title: 'Review your loan details.',
+    type: 'reviewSubmit',
+    inlineActions: true,
+    next: null
   },
 
   dashboardExit: {

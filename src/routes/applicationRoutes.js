@@ -7,6 +7,8 @@ router.post('/applications/start', applicationController.startApplication);
 router.post('/applications', applicationController.createApplication);
 router.get('/applications/:id', applicationController.getApplication);
 router.get('/applications/:id/resume', applicationController.getApplicationResume);
+router.get('/applications/:id/generate-loan-summary', applicationController.generateLoanSummary);
+router.post('/applications/:id/submit', applicationController.submitApplication);
 router.patch('/applications/:id', applicationController.updateApplication);
 router.post('/applications/:id/save-step', applicationController.saveApplicationStep);
 router.post('/applications/:id/attach-user', applicationController.attachUserToApplication);

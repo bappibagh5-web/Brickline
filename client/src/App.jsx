@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
@@ -43,6 +43,7 @@ function DashboardRouteView() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { hydrateAnswers } = useFunnel();
+  const [liveLoanApplications, setLiveLoanApplications] = useState([]);
 
   const activePage = ROUTE_TO_PAGE[location.pathname] || 'home';
 
@@ -64,6 +65,15 @@ function DashboardRouteView() {
     if (!applicationId) {
       navigate('/get-rate/loan-program');
       return;
+    }
+
+    const applicationResponse = await fetch(`${apiBaseUrl}/applications/${applicationId}`);
+    if (applicationResponse.ok) {
+      const applicationPayload = await applicationResponse.json().catch(() => ({}));
+      if (applicationPayload?.status === 'submitted') {
+        navigate('/loan-requests?tab=submitted');
+        return;
+      }
     }
 
     const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/resume`);
@@ -102,6 +112,11 @@ function DashboardRouteView() {
       const applicationId = getStoredApplicationId();
       if (!applicationId) return;
 
+      const applicationResponse = await fetch(`${apiBaseUrl}/applications/${applicationId}`);
+      if (!applicationResponse.ok) return;
+      const applicationPayload = await applicationResponse.json().catch(() => ({}));
+      if (applicationPayload?.status === 'submitted') return;
+
       const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/resume`);
 
       if (!response.ok) {
@@ -130,6 +145,69 @@ function DashboardRouteView() {
     };
   }, [apiBaseUrl, hydrateAnswers, location.pathname, navigate, user]);
 
+  useEffect(() => {
+    let ignore = false;
+
+    const loadDashboardLoan = async () => {
+      const applicationId = getStoredApplicationId();
+      if (!applicationId) return;
+
+      const response = await fetch(`${apiBaseUrl}/applications/${applicationId}`);
+      if (!response.ok || ignore) return;
+
+      const payload = await response.json();
+      const data = payload?.application_data || {};
+
+      const mapStatus = (status) => {
+        if (status === 'submitted') return 'Submitted';
+        if (status === 'lead') return 'Draft';
+        if (status === 'closed') return 'Closed';
+        return 'In Progress';
+      };
+
+      const mapLoanType = (loanProgram) => {
+        if (loanProgram === 'new_construction') return 'New Construction Loan';
+        if (loanProgram === 'rental') return 'Rental Loan';
+        return 'Fix & Flip Loan';
+      };
+
+      const borrowerName = data?.name
+        || `${data?.first_name || ''} ${data?.last_name || ''}`.trim()
+        || 'Borrower';
+
+      const totalLoanAmount = Number(
+        data?.submission_snapshot?.calculator?.total_loan
+        || data?.total_loan
+        || data?.selected_loan_product?.total_loan
+        || 0
+      );
+
+      const mappedLoan = {
+        id: payload.id,
+        loanType: mapLoanType(data?.loan_program),
+        address:
+          data?.finance_property_full_address
+          || data?.purchase_property_full_address
+          || data?.lead_property_full_address
+          || data?.property_address
+          || 'Address pending',
+        amountRequested: totalLoanAmount,
+        progress: payload.status === 'submitted' ? 100 : 75,
+        status: mapStatus(payload.status),
+        lastUpdated: 'recently',
+        nextStep: payload.status === 'submitted' ? 'Underwriting Review' : 'Complete application',
+        borrowerName
+      };
+
+      setLiveLoanApplications([mappedLoan]);
+    };
+
+    loadDashboardLoan();
+    return () => {
+      ignore = true;
+    };
+  }, [apiBaseUrl, location.key]);
+
   return (
     <DashboardApp
       activePage={activePage}
@@ -139,6 +217,7 @@ function DashboardRouteView() {
       onGoResources={handleGoResources}
       onContinueLoan={handleContinueLoan}
       userEmail={user?.email || ''}
+      liveLoanApplications={liveLoanApplications}
     />
   );
 }

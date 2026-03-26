@@ -264,7 +264,9 @@ const FALLBACK_STEP_ORDER = [
   'name',
   'has_entity',
   'entity_name',
-  'property_address'
+  'property_address',
+  'preferred_signing_date',
+  'borrower_details'
 ];
 
 function parseEventStep(event) {
@@ -327,6 +329,118 @@ async function getApplicationResume(applicationId) {
   };
 }
 
+async function insertSubmissionEvent(applicationId, fromStatus) {
+  const withPreferredShape = await supabase
+    .from('application_events')
+    .insert({
+      application_id: applicationId,
+      from_status: fromStatus || null,
+      to_status: 'submitted',
+      notes: 'application_submitted'
+    });
+
+  if (!withPreferredShape.error) {
+    return;
+  }
+
+  const fallback = await supabase
+    .from('application_events')
+    .insert({
+      application_id: applicationId,
+      notes: 'application_submitted'
+    });
+
+  if (fallback.error) {
+    throw fallback.error;
+  }
+}
+
+async function submitApplication(applicationId) {
+  const application = await getApplicationById(applicationId);
+  if (!application) {
+    return null;
+  }
+
+  const data = application.application_data || {};
+  const submissionSnapshot = {
+    calculator: {
+      purchase_price: data.purchase_price || null,
+      rehab_budget: data.rehab_budget || null,
+      comp_value: data.comp_value || null,
+      purchase_advance_percent: data.purchase_advance_percent || null,
+      rehab_advance_percent: data.rehab_advance_percent || null,
+      selected_loan_product: data.selected_loan_product || null,
+      total_loan: data.total_loan || null,
+      purchase_loan: data.purchase_loan || null,
+      rehab_loan: data.rehab_loan || null
+    },
+    property: {
+      lead_property: {
+        full_address: data.lead_property_full_address || null,
+        address_line_1: data.lead_property_address_line_1 || null,
+        address_line_2: data.lead_property_address_line_2 || null,
+        city: data.lead_property_city || null,
+        state: data.lead_property_state || null,
+        zip: data.lead_property_zip || null
+      },
+      purchase_property: {
+        full_address: data.purchase_property_full_address || null,
+        address_line_1: data.purchase_property_address_line_1 || null,
+        address_line_2: data.purchase_property_address_line_2 || null,
+        city: data.purchase_property_city || null,
+        state: data.purchase_property_state || null,
+        zip: data.purchase_property_zip || null
+      },
+      finance_property: {
+        full_address: data.finance_property_full_address || null,
+        address_line_1: data.finance_property_address_line_1 || null,
+        address_line_2: data.finance_property_address_line_2 || null,
+        city: data.finance_property_city || null,
+        state: data.finance_property_state || null,
+        zip: data.finance_property_zip || null
+      }
+    },
+    borrower: {
+      first_name: data.first_name || null,
+      last_name: data.last_name || null,
+      name: data.name || null,
+      entity_name: data.entity_name || null,
+      borrower_details: data.borrower_details || null
+    },
+    signing_date: data.preferred_signing_date || null,
+    selected_loan_product: data.selected_loan_product || null
+  };
+
+  const mergedApplicationData = {
+    ...data,
+    submission_snapshot: submissionSnapshot,
+    submitted_at: new Date().toISOString()
+  };
+
+  const { data: updated, error } = await supabase
+    .from('loan_applications')
+    .update({
+      status: 'submitted',
+      application_data: mergedApplicationData,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', applicationId)
+    .select('*')
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  if (!updated) {
+    return null;
+  }
+
+  await insertSubmissionEvent(applicationId, application.status);
+
+  return updated;
+}
+
 module.exports = {
   createApplication,
   startApplication,
@@ -335,5 +449,6 @@ module.exports = {
   saveApplicationStep,
   attachUserToApplication,
   createAccountForApplication,
-  getApplicationResume
+  getApplicationResume,
+  submitApplication
 };

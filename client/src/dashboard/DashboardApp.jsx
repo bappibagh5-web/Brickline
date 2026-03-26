@@ -22,13 +22,38 @@ export default function DashboardApp({
   onStartNewLoan,
   onGoResources,
   onContinueLoan,
-  userEmail
+  userEmail,
+  liveLoanApplications = []
 }) {
+  const combinedLoans = useMemo(() => {
+    const seen = new Set();
+    const merged = [];
+
+    [...liveLoanApplications, ...loan_applications].forEach((loan) => {
+      if (!loan?.id || seen.has(loan.id)) return;
+      seen.add(loan.id);
+      merged.push(loan);
+    });
+
+    return merged;
+  }, [liveLoanApplications]);
+
+  const activeLoan = useMemo(
+    () => combinedLoans.find((loan) => loan.status === 'In Progress') || combinedLoans[0],
+    [combinedLoans]
+  );
+
+  const activeCount = useMemo(
+    () => combinedLoans.filter((loan) => loan.status === 'In Progress').length,
+    [combinedLoans]
+  );
+
   const page = useMemo(() => {
     if (activePage === 'home') {
       return (
         <HomePage
-          loan={loan_applications[0]}
+          loan={activeLoan}
+          activeCount={activeCount}
           recentActivity={recentActivity}
           onContinueLoan={onContinueLoan}
           onStartNewLoan={onStartNewLoan}
@@ -39,7 +64,7 @@ export default function DashboardApp({
     if (activePage === 'loan-requests') {
       return (
         <LoanRequestsPage
-          loans={loan_applications}
+          loans={combinedLoans}
           advisor={advisor}
           onContinueLoan={onContinueLoan}
         />
@@ -72,7 +97,7 @@ export default function DashboardApp({
     }
 
     return <PlaceholderPage title="Dashboard" />;
-  }, [activePage, onContinueLoan, onStartNewLoan]);
+  }, [activeCount, activeLoan, activePage, combinedLoans, onContinueLoan, onStartNewLoan]);
 
   return (
     <DashboardLayout

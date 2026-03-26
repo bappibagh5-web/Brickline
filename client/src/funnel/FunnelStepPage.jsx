@@ -21,6 +21,27 @@ const US_STATES = [
 
 const GOOGLE_SCRIPT_ID = 'brickline-google-places-script';
 
+function buildApiBaseCandidates(primaryBase) {
+  const bases = new Set();
+  const normalized = String(primaryBase || '').trim().replace(/\/+$/, '');
+  if (normalized) {
+    bases.add(normalized);
+    if (normalized.includes('localhost')) {
+      bases.add(normalized.replace('localhost', '127.0.0.1'));
+    }
+    if (normalized.includes('127.0.0.1')) {
+      bases.add(normalized.replace('127.0.0.1', 'localhost'));
+    }
+  }
+
+  if (import.meta.env.DEV) {
+    bases.add('http://localhost:3000');
+    bases.add('http://127.0.0.1:3000');
+  }
+
+  return Array.from(bases);
+}
+
 function loadGooglePlacesScript(apiKey) {
   return new Promise((resolve, reject) => {
     if (!apiKey) {
@@ -108,6 +129,22 @@ function formatIsoToUsDate(isoDate) {
     return 'MM/DD/YYYY';
   }
   return `${month}/${day}/${year}`;
+}
+
+function formatMoney(value) {
+  const numeric = Number(value);
+  const safeValue = Number.isFinite(numeric) ? numeric : 0;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0
+  }).format(safeValue);
+}
+
+function formatRate(value) {
+  const numeric = Number(value);
+  const safeValue = Number.isFinite(numeric) ? numeric : 0;
+  return `${safeValue.toFixed(2)}%`;
 }
 
 function AddressAutocompleteField({ value, setValue }) {
@@ -342,6 +379,438 @@ function SigningDateStep({ value, setValue, onGoBack }) {
   );
 }
 
+function getReviewSummary(answers) {
+  const calculatorInputs = answers.calculator_inputs || {};
+  const calculatorResults = answers.calculator_results || {};
+  const selectedProduct = answers.selected_loan_product || {};
+  const purchasePrice = Number(
+    calculatorInputs.purchase_price ?? answers.purchase_price ?? 0
+  );
+  const rehabBudget = Number(
+    calculatorInputs.rehab_budget ?? answers.rehab_budget ?? 0
+  );
+  const purchaseAdvancePercent = Number(
+    calculatorInputs.purchase_advance_percent ?? answers.purchase_advance_percent ?? 0
+  );
+  const rehabAdvancePercent = Number(
+    calculatorInputs.rehab_advance_percent ?? answers.rehab_advance_percent ?? 0
+  );
+  const normalizedPurchaseAdvance = purchaseAdvancePercent > 1 ? purchaseAdvancePercent / 100 : purchaseAdvancePercent;
+  const normalizedRehabAdvance = rehabAdvancePercent > 1 ? rehabAdvancePercent / 100 : rehabAdvancePercent;
+
+  const calculatedPurchaseLoan = purchasePrice * normalizedPurchaseAdvance;
+  const calculatedRehabLoan = rehabBudget * normalizedRehabAdvance;
+
+  const purchaseLoanAmount = Number(
+    calculatorResults.purchase_loan
+    ?? selectedProduct.purchase_loan
+    ?? answers.purchase_loan
+    ?? calculatedPurchaseLoan
+    ?? 0
+  );
+  const rehabHoldback = Number(
+    calculatorResults.rehab_loan
+    ?? selectedProduct.rehab_loan
+    ?? answers.rehab_loan
+    ?? calculatedRehabLoan
+    ?? 0
+  );
+  const totalLoanAmount = Number(
+    calculatorResults.total_loan
+    ?? selectedProduct.total_loan
+    ?? answers.total_loan
+    ?? purchaseLoanAmount + rehabHoldback
+    ?? 0
+  );
+  const downPayment = Math.max(purchasePrice - purchaseLoanAmount, 0);
+  const originationFee = totalLoanAmount * 0.02;
+  const serviceFee = 1495;
+  const cashRequired = downPayment + originationFee + serviceFee;
+
+  return {
+    entity_name: answers.entity_name || 'Entity',
+    property_address:
+      answers.finance_property_full_address
+      || answers.purchase_property_full_address
+      || answers.lead_property_full_address
+      || answers.property_address
+      || 'N/A',
+    total_loan_amount: totalLoanAmount,
+    purchase_loan_amount: purchaseLoanAmount,
+    rehab_holdback: rehabHoldback,
+    estimated_monthly_payment: Number(
+      selectedProduct.monthly_payment
+      ?? calculatorResults.loan_products?.find((item) => Number(item?.term) === Number(selectedProduct.term))?.monthly_payment
+      ?? 0
+    ),
+    interest_rate: Number(selectedProduct.rate || 0),
+    estimated_cash_required: cashRequired,
+    down_payment: downPayment,
+    origination_fee: originationFee,
+    service_fee: serviceFee
+  };
+}
+
+function SummaryRow({ label, value, strong = false }) {
+  return (
+    <div className="flex items-center justify-between py-1.5">
+      <p className={`text-[15px] ${strong ? 'font-semibold text-[#1f2937]' : 'text-[#4b5563]'}`}>{label}</p>
+      <p className={`text-[15px] ${strong ? 'font-semibold text-[#1f2937]' : 'text-[#1f2937]'}`}>{value}</p>
+    </div>
+  );
+}
+
+function ReviewSubmitStep({ summary, onGoBack, onSubmit, submitting, submitError, submitSuccess }) {
+  return (
+    <div className="mt-4">
+      <h1 className="text-[48px] text-[clamp(32px,3.2vw,48px)] font-normal leading-[1.1] tracking-[-0.02em] text-[#1f2937]">
+        Review your loan details.
+      </h1>
+
+      <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1.08fr_0.92fr]">
+        <section className="panel p-5">
+          <div className="border-b border-[#e7ebf4] pb-4">
+            <p className="text-lg font-semibold text-[#1f2937]">{summary.entity_name}</p>
+            <p className="mt-1 text-sm text-[#5f6b8f]">{summary.property_address}</p>
+          </div>
+
+          <div className="border-b border-[#e7ebf4] py-4">
+            <SummaryRow label="Total Loan Amount" value={formatMoney(summary.total_loan_amount)} strong />
+            <SummaryRow label="Purchase Loan Amount" value={formatMoney(summary.purchase_loan_amount)} />
+            <SummaryRow label="Rehab Holdback" value={formatMoney(summary.rehab_holdback)} />
+          </div>
+
+          <div className="border-b border-[#e7ebf4] py-4">
+            <SummaryRow label="Estimated Monthly Payment" value={formatMoney(summary.estimated_monthly_payment)} strong />
+            <SummaryRow label="Interest Rate" value={formatRate(summary.interest_rate)} strong />
+          </div>
+
+          <div className="pt-4">
+            <SummaryRow label="Estimated Cash Required at Closing" value={formatMoney(summary.estimated_cash_required)} strong />
+            <SummaryRow label="Down Payment" value={formatMoney(summary.down_payment)} />
+            <SummaryRow label="Origination Fee" value={formatMoney(summary.origination_fee)} />
+            <SummaryRow label="Service Fee" value={formatMoney(summary.service_fee)} />
+          </div>
+        </section>
+
+        <aside className="space-y-4">
+          <p className="text-[18px] leading-8 text-[#374151]">
+            Please make sure your borrower and guarantor information is correct. In order to process your
+            application quickly you can&apos;t make changes once submitted.
+          </p>
+
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting}
+            className="topbar-btn"
+          >
+            {submitting ? 'Submitting...' : 'Submit for Review'}
+          </button>
+
+          <p className="text-sm leading-6 text-[#4b5563]">
+            By submitting for review you agree to the E-Sign Consent, Information Certification and
+            Authorization Agreement, Refund Policy, Privacy Policy, Terms of Use, and State Disclosure.
+          </p>
+
+          {submitSuccess ? (
+            <p className="text-sm font-semibold text-[#1f7a55]">Your loan has been submitted successfully.</p>
+          ) : null}
+          {submitError ? <p className="text-sm font-semibold text-[#b63d3d]">{submitError}</p> : null}
+
+          <button
+            type="button"
+            onClick={onGoBack}
+            className="text-sm font-semibold text-[#0f766e] underline underline-offset-2"
+          >
+            Go Back
+          </button>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function getBorrowerDetailsDefault(step, answers) {
+  const fallbackAddressLine1 = getAddressFieldValue(
+    { addressPrefix: 'finance_property' },
+    answers,
+    'address_line_1'
+  ) || getAddressFieldValue({ addressPrefix: 'purchase_property' }, answers, 'address_line_1');
+
+  const fallbackAddressLine2 = getAddressFieldValue(
+    { addressPrefix: 'finance_property' },
+    answers,
+    'address_line_2'
+  ) || getAddressFieldValue({ addressPrefix: 'purchase_property' }, answers, 'address_line_2');
+
+  const fallbackCity = getAddressFieldValue({ addressPrefix: 'finance_property' }, answers, 'city')
+    || getAddressFieldValue({ addressPrefix: 'purchase_property' }, answers, 'city');
+
+  const fallbackState = getAddressFieldValue({ addressPrefix: 'finance_property' }, answers, 'state')
+    || getAddressFieldValue({ addressPrefix: 'purchase_property' }, answers, 'state')
+    || answers.property_state
+    || '';
+
+  const fallbackZip = getAddressFieldValue({ addressPrefix: 'finance_property' }, answers, 'zip')
+    || getAddressFieldValue({ addressPrefix: 'purchase_property' }, answers, 'zip');
+
+  const existing = step.key && answers[step.key] && typeof answers[step.key] === 'object'
+    ? answers[step.key]
+    : {};
+
+  return {
+    entity_name: existing.entity_name || answers.entity_name || '',
+    first_name: existing.first_name || answers.first_name || '',
+    last_name: existing.last_name || answers.last_name || '',
+    dob: existing.dob || answers.date_of_birth || '',
+    address: {
+      address_line_1: existing.address?.address_line_1 || fallbackAddressLine1 || '',
+      address_line_2: existing.address?.address_line_2 || fallbackAddressLine2 || '',
+      city: existing.address?.city || fallbackCity || '',
+      state: existing.address?.state || fallbackState || '',
+      zip: existing.address?.zip || fallbackZip || ''
+    },
+    consents: {
+      credit_pull: Boolean(existing.consents?.credit_pull),
+      background_check: Boolean(existing.consents?.background_check)
+    }
+  };
+}
+
+function BorrowerDetailsStep({
+  value,
+  setValue,
+  onNext,
+  onGoBack,
+  canProceed,
+  saving,
+  initializing,
+  error,
+  applicationId,
+  apiBaseUrl
+}) {
+  const [panelVisible, setPanelVisible] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+
+  const setField = (field, nextValue) => {
+    setValue({
+      ...value,
+      [field]: nextValue
+    });
+  };
+
+  const setAddressField = (field, nextValue) => {
+    setValue({
+      ...value,
+      address: {
+        ...(value.address || {}),
+        [field]: nextValue
+      }
+    });
+  };
+
+  const setConsentField = (field, nextValue) => {
+    setValue({
+      ...value,
+      consents: {
+        ...(value.consents || {}),
+        [field]: nextValue
+      }
+    });
+  };
+
+  const handleDownloadTerms = async () => {
+    if (!applicationId) return;
+    setDownloadError('');
+    setDownloading(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/generate-loan-summary`);
+      if (!response.ok) {
+        throw new Error('Failed to generate loan summary.');
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = `loan-summary-${applicationId}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (downloadFailure) {
+      setDownloadError(downloadFailure.message || 'Could not download loan terms.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      <p className="max-w-[980px] text-[34px] leading-[1.25] text-[#1f2937]">
+        In order to provide you the best possible rate, we will run a soft credit pull on the guarantor
+        of the entity. Here is what we have so far.
+      </p>
+
+      <div className="mt-8 grid grid-cols-1 gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+        <section>
+          <h2 className="text-[48px] font-medium leading-tight text-[#1f2937]">Entity and Individual Details</h2>
+          <p className="mt-3 text-[18px] leading-7 text-[#4b5563]">
+            Here is the most up to date information we have. Please enter or confirm any additional details.
+          </p>
+
+          <div className="mt-6 space-y-4">
+            <input
+              value={value.entity_name || ''}
+              onChange={(event) => setField('entity_name', event.target.value)}
+              placeholder="Entity Name"
+              className="h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] placeholder:text-[#8d96b6] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+            />
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="text-[14px] font-medium text-[#374151]">First Name</label>
+                <input
+                  value={value.first_name || ''}
+                  onChange={(event) => setField('first_name', event.target.value)}
+                  className="mt-1 h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[14px] font-medium text-[#374151]">Last Name</label>
+                <input
+                  value={value.last_name || ''}
+                  onChange={(event) => setField('last_name', event.target.value)}
+                  className="mt-1 h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <input
+              type="date"
+              value={value.dob || ''}
+              onChange={(event) => setField('dob', event.target.value)}
+              className="h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+            />
+
+            <input
+              value={value.address?.address_line_1 || ''}
+              onChange={(event) => setAddressField('address_line_1', event.target.value)}
+              placeholder="Current Borrower Address Line 1"
+              className="h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] placeholder:text-[#8d96b6] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+            />
+
+            <input
+              value={value.address?.address_line_2 || ''}
+              onChange={(event) => setAddressField('address_line_2', event.target.value)}
+              placeholder="Current Borrower Address Line 2"
+              className="h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] placeholder:text-[#8d96b6] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+            />
+
+            <input
+              value={value.address?.city || ''}
+              onChange={(event) => setAddressField('city', event.target.value)}
+              placeholder="City"
+              className="h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] placeholder:text-[#8d96b6] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+            />
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr]">
+              <select
+                value={value.address?.state || ''}
+                onChange={(event) => setAddressField('state', event.target.value)}
+                className="h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+              >
+                <option value="">State</option>
+                {US_STATES.map((state) => (
+                  <option key={state} value={state}>
+                    {state}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={value.address?.zip || ''}
+                onChange={(event) => setAddressField('zip', event.target.value)}
+                placeholder="ZIP Code"
+                className="h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] placeholder:text-[#8d96b6] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+              />
+            </div>
+          </div>
+        </section>
+
+        <aside className="border border-[#d6d9db] bg-[#f8f8f8] p-6">
+          <h3 className="text-[46px] font-medium leading-tight text-[#1f2937]">Submission Details</h3>
+          <p className="mt-3 text-[18px] leading-7 text-[#4b5563]">
+            You can download Loan Terms now. Submit the loan application when you're ready.
+          </p>
+
+          <button
+            type="button"
+            onClick={handleDownloadTerms}
+            disabled={downloading || !applicationId}
+            className="mt-5 inline-flex h-10 items-center rounded border border-[#0f766e] bg-white px-5 text-[16px] font-medium text-[#0f766e] hover:bg-[#eef8f6] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {downloading ? 'Preparing PDF...' : 'Download Loan Terms'}
+          </button>
+          {downloadError ? <p className="mt-2 text-sm text-[#b63d3d]">{downloadError}</p> : null}
+
+          <h4 className="mt-8 text-[34px] font-semibold text-[#1f2937]">About This Application</h4>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-[18px] leading-8 text-[#374151]">
+            <li>If you've recently applied for another loan with us, we will use the credit decision on file.</li>
+            <li>To ensure the most accurate pricing, we recommend the guarantor submit the loan application.</li>
+            <li>This guarantor must have owned at least 25% of this entity for at least 180 days or since inception.</li>
+            <li>If you need to correct the guarantor, please go back and make that change.</li>
+            <li>If you need to change entities for this loan application please contact support.</li>
+          </ul>
+
+          <p className="mt-6 text-[28px] font-medium text-[#1f2937]">I consent to have this lender:</p>
+          <div className="mt-4 space-y-4">
+            <label className="flex items-start gap-3 text-[18px] leading-7 text-[#374151]">
+              <input
+                type="checkbox"
+                checked={Boolean(value.consents?.credit_pull)}
+                onChange={(event) => setConsentField('credit_pull', event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-[#9aa4ae]"
+              />
+              <span>Order a consumer credit report (soft pull)</span>
+            </label>
+            <label className="flex items-start gap-3 text-[18px] leading-7 text-[#374151]">
+              <input
+                type="checkbox"
+                checked={Boolean(value.consents?.background_check)}
+                onChange={(event) => setConsentField('background_check', event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-[#9aa4ae]"
+              />
+              <span>Obtain a background report</span>
+            </label>
+          </div>
+
+          {error ? <p className="mt-4 text-sm font-medium text-[#b63d3d]">{error}</p> : null}
+
+          <div className="mt-7 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={onGoBack}
+              className="text-[18px] font-medium text-[#0f766e] underline underline-offset-2 hover:text-[#0d5f59]"
+            >
+              Go Back
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              disabled={!canProceed || saving || initializing}
+              className="inline-flex h-10 min-w-[88px] items-center justify-center rounded bg-[#0f766e] px-4 text-[16px] font-semibold text-white transition-all duration-150 hover:bg-[#0d655e] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Next'}
+            </button>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 function getStepValue(step, answers) {
   if (step.type === 'name') {
     return {
@@ -369,11 +838,34 @@ function getStepValue(step, answers) {
     return getTodayIsoDate();
   }
 
+  if (step.type === 'borrowerDetails') {
+    return getBorrowerDetailsDefault(step, answers);
+  }
+
+  if (step.type === 'reviewSubmit') {
+    return getReviewSummary(answers);
+  }
+
   if (!step.key) return null;
   return answers[step.key] ?? '';
 }
 
-function StepRenderer({ step, value, setValue, onGoBack }) {
+function StepRenderer({
+  step,
+  value,
+  setValue,
+  onGoBack,
+  onNext,
+  canProceed,
+  saving,
+  initializing,
+  error,
+  submitError,
+  submitSuccess,
+  applicationId,
+  apiBaseUrl,
+  onSubmit
+}) {
   if (step.options) {
     return (
       <div className="mt-6 grid gap-2.5">
@@ -467,11 +959,42 @@ function StepRenderer({ step, value, setValue, onGoBack }) {
     );
   }
 
+  if (step.type === 'borrowerDetails') {
+    return (
+      <BorrowerDetailsStep
+        value={value}
+        setValue={setValue}
+        onNext={onNext}
+        onGoBack={onGoBack}
+        canProceed={canProceed}
+        saving={saving}
+        initializing={initializing}
+        error={error}
+        applicationId={applicationId}
+        apiBaseUrl={apiBaseUrl}
+      />
+    );
+  }
+
+  if (step.type === 'reviewSubmit') {
+    return (
+      <ReviewSubmitStep
+        summary={value}
+        onGoBack={onGoBack}
+        onSubmit={onSubmit}
+        submitting={saving}
+        submitError={submitError}
+        submitSuccess={submitSuccess}
+      />
+    );
+  }
+
   return null;
 }
 
 export default function FunnelStepPage() {
   const apiBaseUrl = getApiBaseUrl();
+  const apiBaseCandidates = buildApiBaseCandidates(apiBaseUrl);
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -483,7 +1006,23 @@ export default function FunnelStepPage() {
   const [initializing, setInitializing] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [checkEmailSaved, setCheckEmailSaved] = useState(false);
+
+  const fetchApi = async (path, options = {}) => {
+    let lastError = null;
+
+    for (const base of apiBaseCandidates) {
+      try {
+        return await fetch(`${base}${path}`, options);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw lastError || new Error('Failed to fetch');
+  };
 
   const current = getStepByRoute(location.pathname);
 
@@ -504,6 +1043,27 @@ export default function FunnelStepPage() {
 
     if (step.type === 'address') {
       return Boolean(String(value?.place_id || '').trim());
+    }
+
+    if (step.type === 'borrowerDetails') {
+      const hasIdentity = Boolean(
+        String(value?.entity_name || '').trim()
+        && String(value?.first_name || '').trim()
+        && String(value?.last_name || '').trim()
+        && String(value?.dob || '').trim()
+      );
+      const hasAddress = Boolean(
+        String(value?.address?.address_line_1 || '').trim()
+        && String(value?.address?.city || '').trim()
+        && String(value?.address?.state || '').trim()
+        && String(value?.address?.zip || '').trim()
+      );
+      const hasConsents = Boolean(value?.consents?.credit_pull && value?.consents?.background_check);
+      return hasIdentity && hasAddress && hasConsents;
+    }
+
+    if (step.type === 'reviewSubmit') {
+      return true;
     }
 
     if (!step.key) {
@@ -527,7 +1087,7 @@ export default function FunnelStepPage() {
           setApplicationId(existingApplicationId);
           setStoredApplicationId(existingApplicationId);
 
-          const applicationResponse = await fetch(`${apiBaseUrl}/applications/${existingApplicationId}`);
+          const applicationResponse = await fetchApi(`/applications/${existingApplicationId}`);
           if (applicationResponse.ok && !ignore) {
             const applicationPayload = await applicationResponse.json().catch(() => ({}));
             const applicationData = applicationPayload?.application_data;
@@ -544,7 +1104,7 @@ export default function FunnelStepPage() {
           return;
         }
 
-        const response = await fetch(`${apiBaseUrl}/applications/start`, {
+        const response = await fetchApi('/applications/start', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -598,7 +1158,7 @@ export default function FunnelStepPage() {
     let ignore = false;
     const persistCheckEmailStep = async () => {
       try {
-        const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/save-step`, {
+        const response = await fetchApi(`/applications/${applicationId}/save-step`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -654,6 +1214,20 @@ export default function FunnelStepPage() {
       return;
     }
 
+    if (step.type === 'borrowerDetails') {
+      setAnswer(step.key, nextValue);
+      setAnswer('entity_name', nextValue?.entity_name || '');
+      setAnswer('first_name', nextValue?.first_name || '');
+      setAnswer('last_name', nextValue?.last_name || '');
+      setAnswer('date_of_birth', nextValue?.dob || '');
+      setAnswer('address_line_1', nextValue?.address?.address_line_1 || '');
+      setAnswer('address_line_2', nextValue?.address?.address_line_2 || '');
+      setAnswer('city', nextValue?.address?.city || '');
+      setAnswer('state', nextValue?.address?.state || '');
+      setAnswer('zip', nextValue?.address?.zip || '');
+      return;
+    }
+
     if (!step.key) return;
     setAnswer(step.key, nextValue);
   };
@@ -696,6 +1270,26 @@ export default function FunnelStepPage() {
       };
     }
 
+    if (step.type === 'borrowerDetails') {
+      return {
+        entity_name: String(value?.entity_name || '').trim(),
+        first_name: String(value?.first_name || '').trim(),
+        last_name: String(value?.last_name || '').trim(),
+        dob: String(value?.dob || '').trim(),
+        address: {
+          address_line_1: String(value?.address?.address_line_1 || '').trim(),
+          address_line_2: String(value?.address?.address_line_2 || '').trim(),
+          city: String(value?.address?.city || '').trim(),
+          state: String(value?.address?.state || '').trim(),
+          zip: String(value?.address?.zip || '').trim()
+        },
+        consents: {
+          credit_pull: Boolean(value?.consents?.credit_pull),
+          background_check: Boolean(value?.consents?.background_check)
+        }
+      };
+    }
+
     if (!step.key) {
       return null;
     }
@@ -721,7 +1315,7 @@ export default function FunnelStepPage() {
 
       if (shouldSaveStep) {
         if (stepId === 'fullName' && user?.id) {
-          await fetch(`${apiBaseUrl}/applications/${applicationId}/attach-user`, {
+          await fetchApi(`/applications/${applicationId}/attach-user`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
@@ -732,15 +1326,22 @@ export default function FunnelStepPage() {
           }).catch(() => null);
         }
 
-        const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/save-step`, {
+        const requestBody = step.type === 'borrowerDetails'
+          ? {
+              step: 'borrower_details',
+              data: payloadData
+            }
+          : {
+              step_key: stepId,
+              data: payloadData
+            };
+
+        const response = await fetchApi(`/applications/${applicationId}/save-step`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            step_key: stepId,
-            data: payloadData
-          })
+          body: JSON.stringify(requestBody)
         });
 
         const payload = await response.json().catch(() => ({}));
@@ -769,6 +1370,36 @@ export default function FunnelStepPage() {
     window.open('https://mail.google.com', '_blank', 'noopener,noreferrer');
   };
 
+  const handleSubmitForReview = async () => {
+    if (!applicationId || saving) return;
+    setSubmitError('');
+    setSubmitSuccess(false);
+    setSaving(true);
+
+    try {
+      const response = await fetchApi(`/applications/${applicationId}/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload?.error || 'Failed to submit application.');
+      }
+
+      setSubmitSuccess(true);
+      setTimeout(() => {
+        navigate('/dashboard?submitted=1', { replace: true });
+      }, 700);
+    } catch (submitFailure) {
+      setSubmitError(submitFailure.message || 'Failed to submit application.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSkip = async () => {
     if (!step.allowSkip || saving || initializing) return;
 
@@ -776,7 +1407,7 @@ export default function FunnelStepPage() {
     setSaving(true);
     try {
       if (applicationId) {
-        await fetch(`${apiBaseUrl}/applications/${applicationId}/save-step`, {
+        await fetchApi(`/applications/${applicationId}/save-step`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -827,9 +1458,13 @@ export default function FunnelStepPage() {
             <ChevronLeft size={16} /> Back
           </button>
 
-          <div className="max-w-[520px]">
-            <h1 className="text-[48px] text-[clamp(32px,3.2vw,48px)] font-normal leading-[1.1] tracking-[-0.02em] text-[#1f2937]">{step.title || 'Continue'}</h1>
-            {step.description ? <p className="mt-2 text-sm text-[#60709a]">{step.description}</p> : null}
+          <div className={step.type === 'borrowerDetails' || step.type === 'reviewSubmit' ? 'max-w-[1120px]' : 'max-w-[520px]'}>
+            {step.type !== 'borrowerDetails' && step.type !== 'reviewSubmit' ? (
+              <>
+                <h1 className="text-[48px] text-[clamp(32px,3.2vw,48px)] font-normal leading-[1.1] tracking-[-0.02em] text-[#1f2937]">{step.title || 'Continue'}</h1>
+                {step.description ? <p className="mt-2 text-sm text-[#60709a]">{step.description}</p> : null}
+              </>
+            ) : null}
             {error ? <p className="mt-3 text-sm font-semibold text-[#b63d3d]">{error}</p> : null}
             {initializing ? <p className="mt-3 text-xs text-[#60709a]">Starting application session...</p> : null}
 
@@ -838,6 +1473,16 @@ export default function FunnelStepPage() {
               value={value}
               setValue={setStepValue}
               onGoBack={handleBack}
+              onNext={handleNext}
+              canProceed={canProceed}
+              saving={saving}
+              initializing={initializing}
+              error={error}
+              submitError={submitError}
+              submitSuccess={submitSuccess}
+              applicationId={applicationId}
+              apiBaseUrl={apiBaseUrl}
+              onSubmit={handleSubmitForReview}
             />
 
             {stepId === 'accountCreationFlow' ? (
@@ -848,7 +1493,7 @@ export default function FunnelStepPage() {
               >
                 Open your email
               </button>
-            ) : step.next ? (
+            ) : step.next && !step.inlineActions ? (
               <div className="mt-6 flex items-center gap-3">
                 {step.allowSkip ? (
                   <button
@@ -869,7 +1514,7 @@ export default function FunnelStepPage() {
                   {saving ? 'Saving...' : 'Next'}
                 </button>
               </div>
-            ) : (
+            ) : step.type === 'reviewSubmit' ? null : (
               <div className="mt-6 max-w-[460px] rounded-md border border-[#cfd8ff] bg-[#eef2ff] p-3 text-center text-sm font-semibold text-[#1f3aa0]">
                 Funnel complete
               </div>

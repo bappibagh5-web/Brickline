@@ -13,7 +13,9 @@ export default function LoanCard({ loan, compact = false, onContinue }) {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold leading-tight text-[#1c2447]">{loan.loanType}</h3>
+            {loan.borrowerName ? <p className="mt-1 text-sm text-[#505c7e]">{loan.borrowerName}</p> : null}
             <p className="mt-1 text-sm text-[#505c7e]">{loan.address}</p>
+            {loan.id ? <p className="mt-1 text-xs text-[#6f7898]">Application ID: {loan.id}</p> : null}
             {!compact ? (
               <p className="mt-3 text-base text-[#323d61]">
                 Requested: <span className="font-bold text-[#1d2548]">{money(loan.amountRequested)}</span>

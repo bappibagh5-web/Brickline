@@ -181,11 +181,41 @@ export default function RateCalculatorPage() {
     setSavingProduct(true);
     setError('');
     try {
+      const purchasePrice = parseCurrencyInput(form.purchase_price);
+      const rehabBudget = parseCurrencyInput(form.rehab_budget);
+      const compValue = parseCurrencyInput(form.comp_value);
+      const purchaseAdvancePercent = Number(form.purchase_advance_percent || 0);
+      const rehabAdvancePercent = form.property_rehab === 'yes' ? Number(form.rehab_advance_percent || 0) : 0;
+
       await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'selected_loan_product', {
         term: product.term,
         rate: product.rate,
-        monthly_payment: product.monthly_payment
+        monthly_payment: product.monthly_payment,
+        total_loan: Number(metrics?.total_loan || 0),
+        purchase_loan: Number(metrics?.purchase_loan || 0),
+        rehab_loan: Number(metrics?.rehab_loan || 0)
       });
+
+      await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'calculator_inputs', {
+        property_state: form.property_state,
+        est_fico: form.est_fico,
+        refinance: form.refinance,
+        property_rehab: form.property_rehab,
+        purchase_price: purchasePrice,
+        rehab_budget: rehabBudget,
+        comp_value: compValue,
+        purchase_advance_percent: purchaseAdvancePercent,
+        rehab_advance_percent: rehabAdvancePercent,
+        rehab_factor: Number(form.rehab_factor || 0)
+      });
+
+      await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'calculator_results', {
+        ...(metrics || {}),
+        purchase_price: purchasePrice,
+        rehab_budget: rehabBudget,
+        comp_value: compValue
+      });
+
       navigate(`/m/standardBorrower/financePropertyAddress?applicationId=${effectiveApplicationId}`);
     } catch (saveError) {
       setError(saveError.message || 'Failed to save selected loan product.');
