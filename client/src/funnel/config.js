@@ -135,17 +135,6 @@ export const funnelConfig = {
     description: 'What is the address of the property you would like to finance?',
     type: 'address',
     addressPrefix: 'lead_property',
-    next: 'purchasePropertyAddress'
-  },
-
-  purchasePropertyAddress: {
-    step_key: 'purchase_property_address',
-    route: '/m/bridgePropertyPreCalc/propertyAddress',
-    key: 'purchase_property_address',
-    title: 'What is the address of the property you would like to purchase?',
-    type: 'address',
-    addressPrefix: 'purchase_property',
-    allowSkip: true,
     next: 'rateCalculator'
   },
 
