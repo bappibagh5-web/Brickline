@@ -151,6 +151,16 @@ export const funnelConfig = {
     key: 'eligibility_confirmations',
     title: 'Please confirm that the following statements are true:',
     type: 'eligibilityConfirm',
+    next: 'financePropertyAddress'
+  },
+
+  financePropertyAddress: {
+    step_key: 'finance_property_address',
+    route: '/m/standardBorrower/financePropertyAddress',
+    key: 'finance_property_address',
+    title: 'What is the address of the property you would like to finance?',
+    type: 'address',
+    addressPrefix: 'finance_property',
     next: 'preferredSigningDate'
   },
 
