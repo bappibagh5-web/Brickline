@@ -3,7 +3,8 @@ function formatMoney(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    maximumFractionDigits: 2
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
   }).format(Number(value));
 }
 
@@ -36,8 +37,6 @@ export default function CalculatorForm({
   );
   const inputClass =
     'h-10 w-full rounded-md border border-[#d1d5db] bg-white px-3 text-sm text-[#1f2937] transition-colors focus:border-[#9ca3af] focus:outline-none';
-  const readonlyClass =
-    'h-10 w-full rounded-md border border-[#d1d5db] bg-[#f9fafb] px-3 text-sm text-[#1f2937]';
 
   return (
     <section className="rounded-xl border border-[#e5e7eb] bg-white px-5 py-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] md:px-6">
@@ -99,7 +98,12 @@ export default function CalculatorForm({
         </label>
         <label className="grid gap-1.5">
           <FieldLabel>Purchase Loan Amount</FieldLabel>
-          <input value={formatMoney(metrics?.purchase_loan)} readOnly className={readonlyClass} />
+          <input
+            type="text"
+            value={form.purchase_loan_amount}
+            onChange={(event) => onFormChange('purchase_loan_amount', event.target.value)}
+            className={inputClass}
+          />
         </label>
         <div className="pt-7 text-xs leading-5 text-[#6b7280]">
           <p>You qualify for a loan between</p>

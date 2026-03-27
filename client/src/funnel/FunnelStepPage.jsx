@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
+import { BRAND_LOGOS } from '../lib/brandAssets.js';
 import { funnelConfig, funnelInitialStepId } from './config.js';
 import { useFunnel } from './FunnelContext.jsx';
 import { getNextRoute, getStepByRoute } from './utils.js';
@@ -1541,7 +1542,11 @@ export default function FunnelStepPage() {
   return (
     <div className="min-h-screen bg-[#f3f4f4] text-[#1f2937]">
       <header className="flex h-12 items-center justify-between border-b border-[#d6d9db] bg-white px-5">
-        <p className="text-lg font-bold tracking-tight text-[#2f54eb]">Brickline</p>
+        <img
+          src={BRAND_LOGOS.mainBlue}
+          alt="Brickline"
+          className="h-7 w-auto object-contain"
+        />
         <p className="text-xs text-[#4b5563]">Questions? 1-844-415-4663</p>
       </header>
 

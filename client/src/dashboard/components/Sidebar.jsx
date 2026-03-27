@@ -8,6 +8,7 @@ import {
   MessageSquare,
   PanelLeftClose
 } from 'lucide-react';
+import { BRAND_LOGOS } from '../../lib/brandAssets.js';
 
 const iconMap = {
   home: House,
@@ -23,7 +24,11 @@ export default function Sidebar({ items, activeKey, onSelect, onGoResources }) {
     <aside className="brickline-sidebar relative flex h-screen w-[260px] shrink-0 flex-col text-white">
       <div className="flex h-16 items-center gap-3 border-b border-white/15 px-6">
         <PanelLeftClose size={28} />
-        <span className="text-3xl font-bold tracking-tight">Brickline</span>
+        <img
+          src={BRAND_LOGOS.white}
+          alt="Brickline"
+          className="h-8 w-auto object-contain"
+        />
       </div>
 
       <nav className="px-3 pt-4">

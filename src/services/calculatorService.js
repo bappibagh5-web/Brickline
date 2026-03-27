@@ -41,8 +41,12 @@ function calculateLoanMetrics(input) {
   const currentValue = toNumber(input.current_value, 'current_value');
   const compValue = toNumber(input.comp_value, 'comp_value');
   const rehabFactor = toNumber(input.rehab_factor, 'rehab_factor');
+  const manualPurchaseLoan =
+    input.purchase_loan !== undefined && input.purchase_loan !== null && input.purchase_loan !== ''
+      ? toNumber(input.purchase_loan, 'purchase_loan')
+      : null;
 
-  const purchaseLoan = purchasePrice * purchaseAdvance;
+  const purchaseLoan = manualPurchaseLoan !== null ? manualPurchaseLoan : (purchasePrice * purchaseAdvance);
   const rehabLoan = rehabBudget * rehabAdvance;
   if (purchaseLoan > purchasePrice) {
     throw new Error('Invalid percentage normalization: purchase_loan cannot exceed purchase_price.');

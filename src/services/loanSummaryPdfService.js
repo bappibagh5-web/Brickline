@@ -57,6 +57,7 @@ function buildMetrics(data) {
 
   const calculated = calculateLoanMetrics({
     purchase_price: toNumber(data.purchase_price, 60000),
+    purchase_loan: toNumber(data.purchase_loan, 0) || undefined,
     rehab_budget: toNumber(data.rehab_budget, 60000),
     purchase_advance_percent: toNumber(data.purchase_advance_percent, 75),
     rehab_advance_percent: toNumber(data.rehab_advance_percent, 100),
@@ -264,4 +265,3 @@ async function generateLoanSummaryPdf(application) {
 module.exports = {
   generateLoanSummaryPdf
 };
-

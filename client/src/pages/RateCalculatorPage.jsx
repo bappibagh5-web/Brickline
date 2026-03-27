@@ -5,6 +5,7 @@ import CalculatorForm from '../components/CalculatorForm.jsx';
 import CalculatorResults from '../components/CalculatorResults.jsx';
 import { getStoredApplicationId, setStoredApplicationId } from '../funnel/session.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
+import { BRAND_LOGOS } from '../lib/brandAssets.js';
 
 function formatCurrencyInput(value) {
   const cleaned = String(value ?? '').replace(/[^\d.]/g, '');
@@ -47,6 +48,7 @@ export default function RateCalculatorPage() {
     refinance: 'no',
     property_rehab: 'yes',
     purchase_price: '$60,000',
+    purchase_loan_amount: '$45,000',
     rehab_budget: '$60,000',
     purchase_advance_percent: '75',
     rehab_advance_percent: '100',
@@ -80,6 +82,10 @@ export default function RateCalculatorPage() {
             data.purchase_price !== undefined
               ? formatCurrencyInput(data.purchase_price)
               : prev.purchase_price,
+          purchase_loan_amount:
+            data.purchase_loan !== undefined
+              ? formatCurrencyInput(data.purchase_loan)
+              : prev.purchase_loan_amount,
           rehab_budget:
             data.rehab_budget !== undefined
               ? formatCurrencyInput(data.rehab_budget)
@@ -126,6 +132,7 @@ export default function RateCalculatorPage() {
       try {
         const result = await calculateLoan(apiBaseUrl, {
           purchase_price: parseCurrencyInput(form.purchase_price),
+          purchase_loan: parseCurrencyInput(form.purchase_loan_amount),
           rehab_budget: parseCurrencyInput(form.rehab_budget),
           current_value: parseCurrencyInput(form.purchase_price),
           comp_value: parseCurrencyInput(form.comp_value),
@@ -154,6 +161,7 @@ export default function RateCalculatorPage() {
   }, [
     apiBaseUrl,
     form.purchase_price,
+    form.purchase_loan_amount,
     form.rehab_budget,
     form.comp_value,
     form.purchase_advance_percent,
@@ -163,7 +171,7 @@ export default function RateCalculatorPage() {
   ]);
 
   const handleFormChange = (field, value) => {
-    const isCurrencyField = ['purchase_price', 'rehab_budget', 'comp_value'].includes(field);
+    const isCurrencyField = ['purchase_price', 'purchase_loan_amount', 'rehab_budget', 'comp_value'].includes(field);
     const nextValue = isCurrencyField ? formatCurrencyInput(value) : value;
 
     setForm((prev) => ({
@@ -182,6 +190,7 @@ export default function RateCalculatorPage() {
     setError('');
     try {
       const purchasePrice = parseCurrencyInput(form.purchase_price);
+      const purchaseLoanAmount = parseCurrencyInput(form.purchase_loan_amount);
       const rehabBudget = parseCurrencyInput(form.rehab_budget);
       const compValue = parseCurrencyInput(form.comp_value);
       const purchaseAdvancePercent = Number(form.purchase_advance_percent || 0);
@@ -192,7 +201,7 @@ export default function RateCalculatorPage() {
         rate: product.rate,
         monthly_payment: product.monthly_payment,
         total_loan: Number(metrics?.total_loan || 0),
-        purchase_loan: Number(metrics?.purchase_loan || 0),
+        purchase_loan: purchaseLoanAmount || Number(metrics?.purchase_loan || 0),
         rehab_loan: Number(metrics?.rehab_loan || 0)
       });
 
@@ -202,6 +211,7 @@ export default function RateCalculatorPage() {
         refinance: form.refinance,
         property_rehab: form.property_rehab,
         purchase_price: purchasePrice,
+        purchase_loan: purchaseLoanAmount,
         rehab_budget: rehabBudget,
         comp_value: compValue,
         purchase_advance_percent: purchaseAdvancePercent,
@@ -212,6 +222,7 @@ export default function RateCalculatorPage() {
       await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'calculator_results', {
         ...(metrics || {}),
         purchase_price: purchasePrice,
+        purchase_loan: purchaseLoanAmount || Number(metrics?.purchase_loan || 0),
         rehab_budget: rehabBudget,
         comp_value: compValue
       });
@@ -227,7 +238,11 @@ export default function RateCalculatorPage() {
   return (
     <div className="min-h-screen bg-[#f8fafc] px-4 py-8 md:py-12">
       <header className="mb-8 flex h-12 items-center justify-between border-b border-[#d6d9db] bg-white px-5">
-        <p className="text-lg font-bold tracking-tight text-[#2f54eb]">Brickline</p>
+        <img
+          src={BRAND_LOGOS.mainBlue}
+          alt="Brickline"
+          className="h-7 w-auto object-contain"
+        />
         <p className="text-xs text-[#4b5563]">Questions? 1-844-415-4663</p>
       </header>
       <div className="mx-auto w-full max-w-[920px] space-y-4">
