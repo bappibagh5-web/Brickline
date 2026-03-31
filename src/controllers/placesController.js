@@ -1,19 +1,26 @@
 const GOOGLE_PLACES_BASE_URL = 'https://maps.googleapis.com/maps/api/place';
 
 function getGooglePlacesApiKey() {
-  return (
+  const value = (
     process.env.GOOGLE_MAPS_API_KEY
     || process.env.GOOGLE_PLACES_API_KEY
+    || process.env.GOOGLE_API_KEY
+    || process.env.GMAPS_API_KEY
+    || process.env.PLACES_API_KEY
     || process.env.VITE_GOOGLE_MAPS_API_KEY
     || ''
   );
+  return String(value).trim();
 }
 
 async function autocomplete(req, res, next) {
   try {
     const apiKey = getGooglePlacesApiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: 'Server missing GOOGLE_MAPS_API_KEY.' });
+      return res.status(200).json({
+        predictions: [],
+        warning: 'Google Places API key is not configured on server.'
+      });
     }
 
     const input = String(req.query.input || '').trim();
@@ -51,7 +58,7 @@ async function details(req, res, next) {
   try {
     const apiKey = getGooglePlacesApiKey();
     if (!apiKey) {
-      return res.status(500).json({ error: 'Server missing GOOGLE_MAPS_API_KEY.' });
+      return res.status(400).json({ error: 'Google Places API key is not configured on server.' });
     }
 
     const placeId = String(req.query.place_id || '').trim();
