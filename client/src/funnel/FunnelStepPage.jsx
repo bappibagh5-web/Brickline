@@ -20,6 +20,60 @@ const US_STATES = [
   'VA', 'WA', 'WV', 'WI', 'WY'
 ];
 
+const US_STATE_NAME_TO_CODE = {
+  alabama: 'AL',
+  alaska: 'AK',
+  arizona: 'AZ',
+  arkansas: 'AR',
+  california: 'CA',
+  colorado: 'CO',
+  connecticut: 'CT',
+  delaware: 'DE',
+  florida: 'FL',
+  georgia: 'GA',
+  hawaii: 'HI',
+  idaho: 'ID',
+  illinois: 'IL',
+  indiana: 'IN',
+  iowa: 'IA',
+  kansas: 'KS',
+  kentucky: 'KY',
+  louisiana: 'LA',
+  maine: 'ME',
+  maryland: 'MD',
+  massachusetts: 'MA',
+  michigan: 'MI',
+  minnesota: 'MN',
+  mississippi: 'MS',
+  missouri: 'MO',
+  montana: 'MT',
+  nebraska: 'NE',
+  nevada: 'NV',
+  'new hampshire': 'NH',
+  'new jersey': 'NJ',
+  'new mexico': 'NM',
+  'new york': 'NY',
+  'north carolina': 'NC',
+  'north dakota': 'ND',
+  ohio: 'OH',
+  oklahoma: 'OK',
+  oregon: 'OR',
+  pennsylvania: 'PA',
+  'rhode island': 'RI',
+  'south carolina': 'SC',
+  'south dakota': 'SD',
+  tennessee: 'TN',
+  texas: 'TX',
+  utah: 'UT',
+  vermont: 'VT',
+  virginia: 'VA',
+  washington: 'WA',
+  'west virginia': 'WV',
+  wisconsin: 'WI',
+  wyoming: 'WY',
+  'district of columbia': 'DC'
+};
+
 function buildApiBaseCandidates(primaryBase) {
   const bases = new Set();
   const normalized = String(primaryBase || '').trim().replace(/\/+$/, '');
@@ -113,6 +167,42 @@ function normalizeAddressValue(addressValue) {
   };
 }
 
+function mapStateToCode(stateValue) {
+  const raw = String(stateValue || '').trim();
+  if (!raw) return '';
+  const upper = raw.toUpperCase();
+  if (US_STATES.includes(upper)) return upper;
+  return US_STATE_NAME_TO_CODE[raw.toLowerCase()] || '';
+}
+
+function mapNominatimAddressToValue(item) {
+  const address = item?.address || {};
+  const houseNumber = String(address.house_number || '').trim();
+  const road = String(address.road || address.pedestrian || address.footway || '').trim();
+  const line1 = [houseNumber, road].filter(Boolean).join(' ').trim() || extractStreetLine(item?.display_name || '');
+  const city = String(
+    address.city
+    || address.town
+    || address.village
+    || address.hamlet
+    || address.county
+    || ''
+  ).trim();
+  const state = mapStateToCode(address.state_code || address.state);
+  const zip = String(address.postcode || '').trim();
+  const fullAddress = String(item?.display_name || '').trim();
+
+  return normalizeAddressValue({
+    address_line_1: line1,
+    address_line_2: '',
+    city,
+    state,
+    zip,
+    full_address: fullAddress,
+    place_id: `osm:${item?.place_id || ''}`
+  });
+}
+
 function AddressAutocompleteField({ value, setValue, apiBaseUrl }) {
   const requestIdRef = useRef(0);
   const [query, setQuery] = useState(value?.address_line_1 || extractStreetLine(value?.full_address) || '');
@@ -138,33 +228,74 @@ function AddressAutocompleteField({ value, setValue, apiBaseUrl }) {
     setLoading(true);
     setInputError('');
     const currentRequestId = ++requestIdRef.current;
-    const timer = setTimeout(() => {
-      fetch(`${apiBaseUrl}/places/autocomplete?input=${encodeURIComponent(input)}`)
-        .then(async (response) => {
-          const payload = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            throw new Error(payload?.error || 'Failed to fetch address suggestions.');
-          }
-          return payload;
-        })
-        .then((payload) => {
+    const timer = setTimeout(async () => {
+      const fallbackToOsm = async () => {
+        const osmResponse = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&countrycodes=us&limit=6&q=${encodeURIComponent(input)}`
+        );
+        if (!osmResponse.ok) {
+          throw new Error('Failed to fetch address suggestions.');
+        }
+        const osmPayload = await osmResponse.json().catch(() => []);
+        const osmSuggestions = Array.isArray(osmPayload)
+          ? osmPayload.map((item) => ({
+              provider: 'osm',
+              place_id: `osm:${item.place_id}`,
+              description: item.display_name,
+              main_text: extractStreetLine(item.display_name),
+              mappedAddress: mapNominatimAddressToValue(item)
+            }))
+          : [];
+        return osmSuggestions;
+      };
+
+      try {
+        const response = await fetch(`${apiBaseUrl}/places/autocomplete?input=${encodeURIComponent(input)}`);
+        const payload = await response.json().catch(() => ({}));
+        if (currentRequestId !== requestIdRef.current) return;
+
+        if (!response.ok) {
+          throw new Error(payload?.error || 'Failed to fetch address suggestions.');
+        }
+
+        let nextSuggestions = Array.isArray(payload?.predictions) ? payload.predictions : [];
+        if (nextSuggestions.length === 0) {
+          nextSuggestions = await fallbackToOsm();
+          if (currentRequestId !== requestIdRef.current) return;
+        }
+
+        setLoading(false);
+        setSuggestions(nextSuggestions);
+      } catch (_error) {
+        if (currentRequestId !== requestIdRef.current) return;
+        try {
+          const nextSuggestions = await fallbackToOsm();
           if (currentRequestId !== requestIdRef.current) return;
           setLoading(false);
-          const nextSuggestions = Array.isArray(payload?.predictions) ? payload.predictions : [];
           setSuggestions(nextSuggestions);
-        })
-        .catch((error) => {
+          setInputError(nextSuggestions.length === 0 ? 'No address suggestions found.' : '');
+        } catch (fallbackError) {
           if (currentRequestId !== requestIdRef.current) return;
           setLoading(false);
           setSuggestions([]);
-          setInputError(error.message || 'Failed to fetch address suggestions.');
-        });
+          setInputError(fallbackError.message || 'Failed to fetch address suggestions.');
+        }
+      }
     }, 300);
 
     return () => clearTimeout(timer);
   }, [apiBaseUrl, query]);
 
   const handleSelectSuggestion = (prediction) => {
+    if (prediction?.provider === 'osm') {
+      const mapped = normalizeAddressValue(prediction?.mappedAddress || {});
+      setValue(mapped);
+      setQuery(mapped.address_line_1 || prediction.main_text || prediction.description || '');
+      setSuggestions([]);
+      setInputError('');
+      return;
+    }
+
     const placeId = prediction?.place_id;
     if (!placeId) return;
 
