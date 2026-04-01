@@ -462,6 +462,15 @@ function getReviewSummary(answers) {
   const calculatorInputs = answers.calculator_inputs || {};
   const calculatorResults = answers.calculator_results || {};
   const selectedProduct = answers.selected_loan_product || {};
+  const loanProducts = Array.isArray(calculatorResults.loan_products) ? calculatorResults.loan_products : [];
+  const selectedTerm = Number(
+    selectedProduct.term
+    ?? calculatorInputs.selected_term
+    ?? answers.selected_term
+    ?? 0
+  );
+  const matchedProduct = loanProducts.find((item) => Number(item?.term) === selectedTerm) || null;
+  const fallbackProduct = matchedProduct || loanProducts[0] || null;
   const purchasePrice = Number(
     calculatorInputs.purchase_price ?? answers.purchase_price ?? 0
   );
@@ -505,6 +514,16 @@ function getReviewSummary(answers) {
   const originationFee = totalLoanAmount * 0.02;
   const serviceFee = 1495;
   const cashRequired = downPayment + originationFee + serviceFee;
+  const resolvedRate = Number(
+    selectedProduct.rate
+    ?? fallbackProduct?.rate
+    ?? 0
+  );
+  const resolvedMonthlyPayment = Number(
+    selectedProduct.monthly_payment
+    ?? fallbackProduct?.monthly_payment
+    ?? (resolvedRate > 0 ? (purchaseLoanAmount * (resolvedRate / 100)) / 12 : 0)
+  );
 
   return {
     entity_name: answers.entity_name || 'Entity',
@@ -517,12 +536,8 @@ function getReviewSummary(answers) {
     total_loan_amount: totalLoanAmount,
     purchase_loan_amount: purchaseLoanAmount,
     rehab_holdback: rehabHoldback,
-    estimated_monthly_payment: Number(
-      selectedProduct.monthly_payment
-      ?? calculatorResults.loan_products?.find((item) => Number(item?.term) === Number(selectedProduct.term))?.monthly_payment
-      ?? 0
-    ),
-    interest_rate: Number(selectedProduct.rate || 0),
+    estimated_monthly_payment: resolvedMonthlyPayment,
+    interest_rate: resolvedRate,
     estimated_cash_required: cashRequired,
     down_payment: downPayment,
     origination_fee: originationFee,
@@ -543,7 +558,7 @@ function ReviewSubmitStep({ summary, onGoBack, onSubmit, submitting, submitError
   return (
     <div className="mt-4">
       <h1 className="text-[48px] text-[clamp(32px,3.2vw,48px)] font-normal leading-[1.1] tracking-[-0.02em] text-[#1f2937]">
-        Review your loan details.
+        Review Your Loan Details.
       </h1>
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-[1.08fr_0.92fr]">
