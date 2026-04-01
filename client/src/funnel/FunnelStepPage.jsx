@@ -462,9 +462,26 @@ function getReviewSummary(answers) {
   const calculatorInputs = answers.calculator_inputs || {};
   const calculatorResults = answers.calculator_results || {};
   const selectedProduct = answers.selected_loan_product || {};
-  const loanProducts = Array.isArray(calculatorResults.loan_products) ? calculatorResults.loan_products : [];
+  const selectedProductFallback = {
+    term: answers.term ?? answers.termMonths ?? answers.selected_term ?? null,
+    rate: answers.rate ?? answers.interest_rate ?? answers.annual_interest_rate ?? null,
+    monthly_payment:
+      answers.monthly_payment
+      ?? answers.monthlyPayment
+      ?? answers.estimated_monthly_payment
+      ?? answers.estimatedMonthlyPayment
+      ?? null
+  };
+  const effectiveSelectedProduct = {
+    ...selectedProductFallback,
+    ...selectedProduct
+  };
+  const loanProducts = Array.isArray(calculatorResults.loan_products)
+    ? calculatorResults.loan_products
+    : (Array.isArray(answers.loan_products) ? answers.loan_products : []);
   const selectedTerm = Number(
-    selectedProduct.term
+    effectiveSelectedProduct.term
+    ?? effectiveSelectedProduct.termMonths
     ?? calculatorInputs.selected_term
     ?? answers.selected_term
     ?? 0
@@ -515,13 +532,21 @@ function getReviewSummary(answers) {
   const serviceFee = 1495;
   const cashRequired = downPayment + originationFee + serviceFee;
   const resolvedRate = Number(
-    selectedProduct.rate
+    effectiveSelectedProduct.rate
+    ?? effectiveSelectedProduct.interest_rate
+    ?? effectiveSelectedProduct.annual_interest_rate
     ?? fallbackProduct?.rate
     ?? 0
   );
   const resolvedMonthlyPayment = Number(
-    selectedProduct.monthly_payment
+    effectiveSelectedProduct.monthly_payment
+    ?? effectiveSelectedProduct.monthlyPayment
+    ?? effectiveSelectedProduct.estimated_monthly_payment
+    ?? effectiveSelectedProduct.estimatedMonthlyPayment
     ?? fallbackProduct?.monthly_payment
+    ?? fallbackProduct?.monthlyPayment
+    ?? fallbackProduct?.estimated_monthly_payment
+    ?? fallbackProduct?.estimatedMonthlyPayment
     ?? (resolvedRate > 0 ? (purchaseLoanAmount * (resolvedRate / 100)) / 12 : 0)
   );
 
