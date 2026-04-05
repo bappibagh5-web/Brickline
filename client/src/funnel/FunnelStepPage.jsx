@@ -302,13 +302,22 @@ function rankSuggestions(suggestions, queryText) {
 
 let googlePlacesScriptPromise = null;
 
-function loadGooglePlacesLibrary(apiKey) {
+function getRuntimeGoogleMapsApiKey() {
+  const value = String(window.RUNTIME_CONFIG?.GOOGLE_MAPS_API_KEY || '').trim();
+  if (!value || value === 'REPLACE_AT_RUNTIME') {
+    return '';
+  }
+  return value;
+}
+
+function loadGooglePlacesLibrary() {
   if (window.google?.maps?.places) {
     return Promise.resolve(window.google);
   }
 
+  const apiKey = getRuntimeGoogleMapsApiKey();
   if (!apiKey) {
-    return Promise.reject(new Error('Missing VITE_GOOGLE_MAPS_API_KEY'));
+    return Promise.reject(new Error('Missing runtime Google Maps API key.'));
   }
 
   if (googlePlacesScriptPromise) {
@@ -383,8 +392,7 @@ function AddressAutocompleteField({ value, setValue }) {
   const [geoBias, setGeoBias] = useState(null);
 
   useEffect(() => {
-    const apiKey = String(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '').trim();
-    loadGooglePlacesLibrary(apiKey)
+    loadGooglePlacesLibrary()
       .then(() => {
         googleAutocompleteServiceRef.current = new window.google.maps.places.AutocompleteService();
         googlePlacesServiceRef.current = new window.google.maps.places.PlacesService(document.createElement('div'));
@@ -433,7 +441,7 @@ function AddressAutocompleteField({ value, setValue }) {
         let nextSuggestions = [];
 
         if (!googleLoaded || !googleAutocompleteServiceRef.current) {
-          throw new Error('Google Places is unavailable. Check VITE_GOOGLE_MAPS_API_KEY.');
+          throw new Error('Google Places is unavailable. Check runtime config key.');
         }
 
         const predictionRequest = {
@@ -497,7 +505,7 @@ function AddressAutocompleteField({ value, setValue }) {
       let mapped = null;
 
       if (!googleLoaded || !googlePlacesServiceRef.current) {
-        throw new Error('Google Places is unavailable. Check VITE_GOOGLE_MAPS_API_KEY.');
+        throw new Error('Google Places is unavailable. Check runtime config key.');
       }
 
       mapped = await new Promise((resolve, reject) => {
