@@ -952,7 +952,7 @@ function getBorrowerDetailsDefault(step, answers) {
     last_name: existing.last_name || answers.last_name || '',
     dob: existing.dob || answers.date_of_birth || '',
     address: {
-      address_line_1: extractStreetLine(existing.address?.address_line_1 || fallbackAddressLine1 || ''),
+      address_line_1: String(existing.address?.address_line_1 || fallbackAddressLine1 || ''),
       address_line_2: existing.address?.address_line_2 || fallbackAddressLine2 || '',
       city: existing.address?.city || fallbackCity || '',
       state: existing.address?.state || fallbackState || '',
@@ -1081,6 +1081,10 @@ function BorrowerDetailsStep({
               onChange={(event) => setField('dob', event.target.value)}
               className="h-12 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[16px] text-[#475569] focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
             />
+
+            <h3 className="pt-1 text-[18px] font-semibold leading-tight text-[#1f2937]">
+              Individual Current Address
+            </h3>
 
             <input
               value={value.address?.address_line_1 || ''}
