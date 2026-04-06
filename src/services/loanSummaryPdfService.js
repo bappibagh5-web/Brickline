@@ -6,13 +6,15 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(numeric) ? numeric : fallback;
 }
 
-function formatCurrency(value) {
+function formatCurrency(value, keepDecimals = false) {
   const numeric = toNumber(value, 0);
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 2
-  }).format(numeric);
+  if (keepDecimals) {
+    return `$${Number(numeric).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
+  }
+  return `$${Math.round(numeric).toLocaleString()}`;
 }
 
 function formatPercent(value) {
@@ -208,7 +210,7 @@ async function generateLoanSummaryPdf(application) {
   }
   y += 2;
 
-  writePairRow(doc, 'Monthly Payment', formatCurrency(selectedProduct.monthly_payment || 0), 62, pageWidth - 230, y, { boldValue: true, valueSize: 12, labelSize: 12 });
+  writePairRow(doc, 'Monthly Payment', formatCurrency(selectedProduct.monthly_payment || 0, true), 62, pageWidth - 230, y, { boldValue: true, valueSize: 12, labelSize: 12 });
   y += 24;
   writePairRow(doc, 'Interest Rate', formatPercent(selectedProduct.rate || 0), 62, pageWidth - 230, y, { boldValue: true, valueSize: 12, labelSize: 12 });
   y += 22;
