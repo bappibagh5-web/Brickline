@@ -49,6 +49,8 @@ export default function RateCalculatorPage() {
     property_rehab: 'yes',
     purchase_price: '$200,000',
     purchase_loan_amount: '$150,000',
+    refinance_loan_amount: '$150,000',
+    remaining_mortgage: '$0',
     rehab_budget: '$75,000',
     comp_value: '$350,000'
   });
@@ -88,6 +90,14 @@ export default function RateCalculatorPage() {
             (data.loan_amount !== undefined || data.purchase_loan !== undefined)
               ? formatCurrencyInput(data.loan_amount ?? data.purchase_loan)
               : prev.purchase_loan_amount,
+          refinance_loan_amount:
+            (data.refinance_loan_amount !== undefined || data.refinance_loan !== undefined || (data.refinance === 'yes' && data.loan_amount !== undefined))
+              ? formatCurrencyInput(data.refinance_loan_amount ?? data.refinance_loan ?? data.loan_amount)
+              : prev.refinance_loan_amount,
+          remaining_mortgage:
+            data.remaining_mortgage !== undefined
+              ? formatCurrencyInput(data.remaining_mortgage)
+              : prev.remaining_mortgage,
           rehab_budget:
             (data.rehab_cost !== undefined || data.rehab_budget !== undefined)
               ? formatCurrencyInput(data.rehab_cost ?? data.rehab_budget)
@@ -125,6 +135,23 @@ export default function RateCalculatorPage() {
       setLoading(true);
       setError('');
       try {
+        const requiresRemainingMortgage = form.refinance === 'yes' && form.owned_six_months === 'yes';
+        const remainingMortgageInput = String(form.remaining_mortgage || '').trim();
+        const remainingMortgageAmount = parseCurrencyInput(form.remaining_mortgage);
+
+        if (requiresRemainingMortgage && (!remainingMortgageInput || remainingMortgageAmount <= 0)) {
+          if (!ignore) {
+            setMetrics(null);
+            setError('Please enter remaining mortgage balance to continue');
+            setLoading(false);
+          }
+          return;
+        }
+
+        const purchaseLoanAmount = parseCurrencyInput(form.purchase_loan_amount);
+        const refinanceLoanAmount = parseCurrencyInput(form.refinance_loan_amount);
+        const effectiveLoanAmount = form.refinance === 'yes' ? refinanceLoanAmount : purchaseLoanAmount;
+
         const result = await calculateLoan(apiBaseUrl, {
           fico_bucket: form.est_fico,
           est_fico: form.est_fico,
@@ -134,7 +161,12 @@ export default function RateCalculatorPage() {
           owned_six_months: form.owned_six_months,
           property_rehab: form.property_rehab,
           purchase_price: parseCurrencyInput(form.purchase_price),
-          loan_amount: parseCurrencyInput(form.purchase_loan_amount),
+          loan_amount: effectiveLoanAmount,
+          purchase_loan_amount: purchaseLoanAmount,
+          refinance_loan_amount: refinanceLoanAmount,
+          remaining_mortgage: requiresRemainingMortgage
+            ? remainingMortgageAmount
+            : 0,
           rehab_cost: form.property_rehab === 'yes' ? parseCurrencyInput(form.rehab_budget) : 0,
           arv: parseCurrencyInput(form.comp_value)
         });
@@ -160,6 +192,8 @@ export default function RateCalculatorPage() {
     apiBaseUrl,
     form.purchase_price,
     form.purchase_loan_amount,
+    form.refinance_loan_amount,
+    form.remaining_mortgage,
     form.rehab_budget,
     form.comp_value,
     form.property_type,
@@ -170,16 +204,40 @@ export default function RateCalculatorPage() {
   ]);
 
   const handleFormChange = (field, value) => {
-    const isCurrencyField = ['purchase_price', 'purchase_loan_amount', 'rehab_budget', 'comp_value'].includes(field);
+    const isCurrencyField = [
+      'purchase_price',
+      'purchase_loan_amount',
+      'refinance_loan_amount',
+      'remaining_mortgage',
+      'rehab_budget',
+      'comp_value'
+    ].includes(field);
     const nextValue = isCurrencyField ? formatCurrencyInput(value) : value;
 
-    setForm((prev) => ({
-      ...prev,
-      ...(field === 'property_rehab' && value === 'no'
-        ? { rehab_budget: '$0' }
-        : {}),
-      [field]: nextValue
-    }));
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        ...(field === 'property_rehab' && value === 'no'
+          ? { rehab_budget: '$0' }
+          : {}),
+        [field]: nextValue
+      };
+
+      if (field === 'refinance' && value === 'no') {
+        next.refinance_loan_amount = '';
+        next.remaining_mortgage = '';
+      }
+
+      if (field === 'refinance' && value === 'yes' && !next.refinance_loan_amount) {
+        next.refinance_loan_amount = prev.purchase_loan_amount || '$0';
+      }
+
+      if (field === 'owned_six_months' && value === 'no') {
+        next.remaining_mortgage = '';
+      }
+
+      return next;
+    });
   };
 
   const handleChooseProduct = async (product) => {
@@ -203,6 +261,9 @@ export default function RateCalculatorPage() {
 
       const purchasePrice = parseCurrencyInput(form.purchase_price);
       const purchaseLoanAmount = parseCurrencyInput(form.purchase_loan_amount);
+      const refinanceLoanAmount = parseCurrencyInput(form.refinance_loan_amount);
+      const remainingMortgage = parseCurrencyInput(form.remaining_mortgage);
+      const effectiveLoanAmount = form.refinance === 'yes' ? refinanceLoanAmount : purchaseLoanAmount;
       const rehabBudget = parseCurrencyInput(form.rehab_budget);
       const compValue = parseCurrencyInput(form.comp_value);
 
@@ -212,7 +273,7 @@ export default function RateCalculatorPage() {
         monthly_payment: product.monthly_payment,
         monthlyPayment: product.monthly_payment,
         total_loan: Number(metrics?.total_loan || 0),
-        purchase_loan: purchaseLoanAmount || Number(metrics?.purchase_loan || 0),
+        purchase_loan: effectiveLoanAmount || Number(metrics?.purchase_loan || 0),
         rehab_loan: Number(metrics?.rehab_loan || 0)
       });
 
@@ -231,8 +292,12 @@ export default function RateCalculatorPage() {
         owned_six_months: form.owned_six_months,
         property_rehab: form.property_rehab,
         purchase_price: purchasePrice,
-        loan_amount: purchaseLoanAmount,
+        loan_amount: effectiveLoanAmount,
         purchase_loan: purchaseLoanAmount,
+        purchase_loan_amount: purchaseLoanAmount,
+        refinance_loan: refinanceLoanAmount,
+        refinance_loan_amount: refinanceLoanAmount,
+        remaining_mortgage: form.refinance === 'yes' && form.owned_six_months === 'yes' ? remainingMortgage : 0,
         rehab_cost: rehabBudget,
         rehab_budget: rehabBudget,
         arv: compValue,
@@ -243,7 +308,10 @@ export default function RateCalculatorPage() {
         ...(metrics || {}),
         property_type: form.property_type,
         purchase_price: purchasePrice,
-        purchase_loan: purchaseLoanAmount || Number(metrics?.purchase_loan || 0),
+        purchase_loan: effectiveLoanAmount || Number(metrics?.purchase_loan || 0),
+        purchase_loan_amount: purchaseLoanAmount,
+        refinance_loan_amount: refinanceLoanAmount,
+        remaining_mortgage: form.refinance === 'yes' && form.owned_six_months === 'yes' ? remainingMortgage : 0,
         rehab_budget: rehabBudget,
         comp_value: compValue
       });

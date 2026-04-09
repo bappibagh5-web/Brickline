@@ -64,11 +64,22 @@ function getLeverageBand(ltcDecimal) {
 }
 
 function getLoanAmount(input) {
+  const isRefinance = isAffirmative(input.refinance);
+
+  if (isRefinance) {
+    return toNumber(
+      input.refinance_loan_amount
+      ?? input.refinance_loan
+      ?? input.loan_amount
+      ?? 0,
+      0
+    );
+  }
+
   return toNumber(
-    input.loan_amount
+    input.purchase_loan_amount
     ?? input.purchase_loan
-    ?? input.refinance_loan
-    ?? input.purchase_loan_amount
+    ?? input.loan_amount
     ?? 0,
     0
   );
@@ -89,7 +100,7 @@ function isAffirmative(value) {
   return String(value).toLowerCase() === 'yes' || String(value).toLowerCase() === 'true';
 }
 
-function getPricingOptions(input, purchaseLoanAmount, ltcDecimal, isEligible) {
+function getPricingOptions(input, loanAmount, ltcDecimal, isEligible) {
   if (!isEligible) return [];
 
   const fico = input.fico_bucket ?? input.est_fico ?? input.fico;
@@ -109,7 +120,7 @@ function getPricingOptions(input, purchaseLoanAmount, ltcDecimal, isEligible) {
   return [12, 18, 24].map((term) => {
     const rate = Number((base12 + TERM_SPREADS[term]).toFixed(3));
     const annualRateDecimal = rate / 100;
-    const monthlyPayment = roundMoney((purchaseLoanAmount * annualRateDecimal) / 12);
+    const monthlyPayment = roundMoney((loanAmount * annualRateDecimal) / 12);
     return {
       term,
       rate,
@@ -169,7 +180,7 @@ function calculateLoanMetrics(input) {
   }
 
   const isEligible = errors.length === 0;
-  const loanProducts = getPricingOptions(input, purchaseLoanAmount, ltcDecimal, isEligible);
+  const loanProducts = getPricingOptions(input, loanAmount, ltcDecimal, isEligible);
 
   return {
     fico_policy: policy.fico,

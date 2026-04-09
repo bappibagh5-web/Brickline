@@ -1,4 +1,4 @@
-function formatMoney(value) {
+﻿function formatMoney(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return '-';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -56,6 +56,11 @@ export default function CalculatorForm({
   loading
 }) {
   const isRehabDisabled = form.property_rehab === 'no';
+  const isRefinance = form.refinance === 'yes';
+  const ownedSixMonths = form.owned_six_months === 'yes';
+  const showPurchaseLoanAmount = !isRefinance;
+  const showRefinanceLoanAmount = isRefinance;
+  const showRemainingMortgage = isRefinance && ownedSixMonths;
   const hasCustomState = Boolean(
     form.property_state && !US_STATE_OPTIONS.includes(String(form.property_state).toUpperCase())
   );
@@ -128,7 +133,7 @@ export default function CalculatorForm({
           </select>
         </label>
         <label className="grid gap-1.5">
-          <FieldLabel>Purchase Price</FieldLabel>
+          <FieldLabel>{isRefinance ? 'Estimated Property Value' : 'Purchase Price'}</FieldLabel>
           <input
             type="text"
             value={form.purchase_price}
@@ -136,15 +141,28 @@ export default function CalculatorForm({
             className={inputClass}
           />
         </label>
-        <label className="grid gap-1.5">
-          <FieldLabel>{form.refinance === 'yes' ? 'Refinance Loan Amount' : 'Purchase Loan Amount'}</FieldLabel>
-          <input
-            type="text"
-            value={form.purchase_loan_amount}
-            onChange={(event) => onFormChange('purchase_loan_amount', event.target.value)}
-            className={inputClass}
-          />
-        </label>
+        {showPurchaseLoanAmount ? (
+          <label className="grid gap-1.5">
+            <FieldLabel>Purchase Loan Amount</FieldLabel>
+            <input
+              type="text"
+              value={form.purchase_loan_amount}
+              onChange={(event) => onFormChange('purchase_loan_amount', event.target.value)}
+              className={inputClass}
+            />
+          </label>
+        ) : null}
+        {showRefinanceLoanAmount ? (
+          <label className="grid gap-1.5">
+            <FieldLabel>Refinance Loan Amount</FieldLabel>
+            <input
+              type="text"
+              value={form.refinance_loan_amount}
+              onChange={(event) => onFormChange('refinance_loan_amount', event.target.value)}
+              className={inputClass}
+            />
+          </label>
+        ) : null}
         <div className="pt-7 text-xs leading-5 text-[#6b7280]">
           <p>You qualify for a loan between</p>
           <p className="font-semibold text-[#374151]">
@@ -153,7 +171,7 @@ export default function CalculatorForm({
         </div>
       </div>
 
-      {form.refinance === 'yes' ? (
+      {isRefinance ? (
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-[1fr_1fr_1fr_220px]">
           <label className="grid gap-1.5">
             <FieldLabel>Prop. Owned ≥ 6 Months</FieldLabel>
@@ -166,6 +184,17 @@ export default function CalculatorForm({
               <option value="no">No</option>
             </select>
           </label>
+          {showRemainingMortgage ? (
+            <label className="grid gap-1.5">
+              <FieldLabel>Remaining Mortgage</FieldLabel>
+              <input
+                type="text"
+                value={form.remaining_mortgage}
+                onChange={(event) => onFormChange('remaining_mortgage', event.target.value)}
+                className={inputClass}
+              />
+            </label>
+          ) : null}
         </div>
       ) : null}
 
