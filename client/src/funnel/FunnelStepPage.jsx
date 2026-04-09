@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -11,6 +11,8 @@ import {
   getStoredApplicationId,
   setStoredApplicationId,
   setStoredFunnelEmail,
+  getStoredBorrower,
+  setStoredBorrower,
   getStoredSelectedLoan
 } from './session.js';
 
@@ -74,6 +76,15 @@ const US_STATE_NAME_TO_CODE = {
   wyoming: 'WY',
   'district of columbia': 'DC'
 };
+
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function isValidUsPhone(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length === 10;
+}
 
 function buildApiBaseCandidates(primaryBase) {
   const bases = new Set();
@@ -1382,6 +1393,16 @@ function BorrowerDetailsStep({
 }
 
 function getStepValue(step, answers) {
+  if (step.type === 'leadCapture') {
+    const storedBorrower = getStoredBorrower() || {};
+    return {
+      first_name: answers.first_name || storedBorrower.firstName || '',
+      last_name: answers.last_name || storedBorrower.lastName || '',
+      email: answers.email || storedBorrower.email || '',
+      phone: answers.phone || storedBorrower.phone || ''
+    };
+  }
+
   if (step.type === 'name') {
     return {
       first_name: answers.first_name || '',
@@ -1505,6 +1526,45 @@ function StepRenderer({
           className="h-11 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[14px] text-[#475569] placeholder:text-[#8d96b6] transition-all duration-150 focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
           placeholder={inputPlaceholder}
         />
+      </div>
+    );
+  }
+
+  if (step.type === 'leadCapture') {
+    return (
+      <div className="mt-6 grid gap-2.5">
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+          <input
+            type="text"
+            value={value?.first_name || ''}
+            onChange={(event) => setValue({ ...value, first_name: event.target.value })}
+            className="h-11 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[14px] text-[#475569] placeholder:text-[#8d96b6] transition-all duration-150 focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+            placeholder="First Name"
+          />
+          <input
+            type="text"
+            value={value?.last_name || ''}
+            onChange={(event) => setValue({ ...value, last_name: event.target.value })}
+            className="h-11 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[14px] text-[#475569] placeholder:text-[#8d96b6] transition-all duration-150 focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+            placeholder="Last Name"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+          <input
+            type="email"
+            value={value?.email || ''}
+            onChange={(event) => setValue({ ...value, email: event.target.value })}
+            className="h-11 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[14px] text-[#475569] placeholder:text-[#8d96b6] transition-all duration-150 focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+            placeholder="Email Address"
+          />
+          <input
+            type="tel"
+            value={value?.phone || ''}
+            onChange={(event) => setValue({ ...value, phone: event.target.value })}
+            className="h-11 w-full rounded-none border border-[#9aa4ae] bg-[#f4f5f5] px-4 text-[14px] text-[#475569] placeholder:text-[#8d96b6] transition-all duration-150 focus:border-[#4e6bf0] focus:bg-[#f3f6ff] focus:outline-none"
+            placeholder="Phone Number"
+          />
+        </div>
       </div>
     );
   }
@@ -1641,9 +1701,16 @@ export default function FunnelStepPage() {
 
   const { stepId, step } = current;
   const value = getStepValue(step, answers);
-  const isEmailCapture = stepId === 'emailCapture';
 
   const canProceed = (() => {
+    if (step.type === 'leadCapture') {
+      const firstName = String(value?.first_name || '').trim();
+      const lastName = String(value?.last_name || '').trim();
+      const email = String(value?.email || '').trim();
+      const phone = String(value?.phone || '').trim();
+      return Boolean(firstName && lastName && isValidEmail(email) && isValidUsPhone(phone));
+    }
+
     if (step.type === 'name') {
       const firstName = String(value?.first_name || '').trim();
       const lastName = String(value?.last_name || '').trim();
@@ -1800,6 +1867,28 @@ export default function FunnelStepPage() {
   }, [apiBaseUrl, applicationId, checkEmailSaved, stepId]);
 
   const setStepValue = (nextValue) => {
+    if (step.type === 'leadCapture') {
+      const firstName = String(nextValue?.first_name || '');
+      const lastName = String(nextValue?.last_name || '');
+      const email = String(nextValue?.email || '');
+      const phone = String(nextValue?.phone || '');
+      const borrower = {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        phone: phone.trim()
+      };
+
+      setAnswer('first_name', firstName);
+      setAnswer('last_name', lastName);
+      setAnswer('name', `${firstName} ${lastName}`.trim());
+      setAnswer('email', email);
+      setAnswer('phone', phone);
+      setAnswer('borrower', borrower);
+      setStoredBorrower(borrower);
+      return;
+    }
+
     if (step.type === 'name') {
       const firstName = String(nextValue?.first_name || '');
       const lastName = String(nextValue?.last_name || '');
@@ -1871,6 +1960,26 @@ export default function FunnelStepPage() {
   };
 
   const getStepPayload = () => {
+    if (step.type === 'leadCapture') {
+      const firstName = String(value?.first_name || '').trim();
+      const lastName = String(value?.last_name || '').trim();
+      const email = String(value?.email || '').trim();
+      const phone = String(value?.phone || '').trim();
+      return {
+        first_name: firstName,
+        last_name: lastName,
+        email,
+        phone,
+        name: `${firstName} ${lastName}`.trim(),
+        borrower: {
+          firstName,
+          lastName,
+          email,
+          phone
+        }
+      };
+    }
+
     if (step.type === 'name') {
       const firstName = String(value?.first_name || '').trim();
       const lastName = String(value?.last_name || '').trim();
@@ -1960,23 +2069,11 @@ export default function FunnelStepPage() {
         const payloadData = getStepPayload();
         const shouldSaveStep = Boolean(payloadData && activeApplicationId);
 
-        if (isEmailCapture && typeof value === 'string') {
-          setStoredFunnelEmail(value);
+        if (step.type === 'leadCapture' && typeof value?.email === 'string') {
+          setStoredFunnelEmail(value.email);
         }
 
         if (!shouldSaveStep) return;
-
-        if (stepId === 'fullName' && user?.id) {
-          await fetchApi(`/applications/${activeApplicationId}/attach-user`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              user_id: user.id
-            })
-          }).catch(() => null);
-        }
 
         const requestBody = step.type === 'borrowerDetails'
           ? {
@@ -2123,7 +2220,7 @@ export default function FunnelStepPage() {
           <div className={step.type === 'borrowerDetails' || step.type === 'reviewSubmit' ? 'max-w-[1120px]' : 'max-w-[520px]'}>
             {step.type !== 'borrowerDetails' && step.type !== 'reviewSubmit' ? (
               <>
-                <h1 className="text-[48px] text-[clamp(32px,3.2vw,48px)] font-normal leading-[1.1] tracking-[-0.02em] text-[#1f2937]">{step.title || 'Continue'}</h1>
+                <h1 className={`${step.type === 'leadCapture' ? 'text-[clamp(34px,2.4vw,42px)]' : 'text-[48px] text-[clamp(32px,3.2vw,48px)]'} font-normal leading-[1.1] tracking-[-0.02em] text-[#1f2937]`}>{step.title || 'Continue'}</h1>
                 {step.description ? <p className="mt-2 text-sm text-[#60709a]">{step.description}</p> : null}
               </>
             ) : null}

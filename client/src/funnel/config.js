@@ -36,34 +36,15 @@ export const funnelConfig = {
     key: 'property_state',
     title: 'Which state is your property located in?',
     type: 'select',
-    next: 'emailCapture'
+    next: 'leadCapture'
   },
 
-  emailCapture: {
-    step_key: 'email_capture',
-    route: '/m/getRate/emailCapture',
-    key: 'email',
-    title: 'Create your Brickline account to view your financing path and continue your application',
-    type: 'input',
-    inputType: 'email',
-    next: 'phoneNumber'
-  },
-
-  phoneNumber: {
-    step_key: 'phone_number',
-    route: '/m/getRate/phoneNumber',
-    key: 'phone',
-    title: 'What is your phone number?',
-    type: 'input',
-    inputType: 'tel',
-    next: 'fullName'
-  },
-
-  fullName: {
-    step_key: 'full_name',
-    route: '/m/getRate/fullName',
-    title: 'What is your name?',
-    type: 'name',
+  leadCapture: {
+    step_key: 'lead_capture',
+    route: '/m/getRate/leadCapture',
+    key: 'borrower',
+    title: 'You\u2019re one step away from seeing your financing path',
+    type: 'leadCapture',
     next: ({ isAuthenticated, answers }) => (
       isAuthenticated ? getEntityStepByExperience(answers) : 'accountCreationFlow'
     )

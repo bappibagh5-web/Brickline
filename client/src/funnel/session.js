@@ -1,6 +1,7 @@
 const APPLICATION_ID_STORAGE_KEY = 'brickline_application_id';
 const FUNNEL_EMAIL_STORAGE_KEY = 'brickline_funnel_email';
 const ACCOUNT_SETUP_LINK_STORAGE_KEY = 'brickline_account_setup_link';
+const BORROWER_STORAGE_KEY = 'borrower';
 const SELECTED_LOAN_STORAGE_KEY = 'selectedLoan';
 const LEGACY_SELECTED_LOAN_STORAGE_KEY = 'brickline_selected_loan';
 
@@ -37,6 +38,21 @@ export function setStoredAccountSetupLink(link) {
 
 export function clearStoredAccountSetupLink() {
   window.localStorage.removeItem(ACCOUNT_SETUP_LINK_STORAGE_KEY);
+}
+
+export function getStoredBorrower() {
+  const raw = window.localStorage.getItem(BORROWER_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function setStoredBorrower(borrower) {
+  if (!borrower || typeof borrower !== 'object') return;
+  window.localStorage.setItem(BORROWER_STORAGE_KEY, JSON.stringify(borrower));
 }
 
 export function getStoredSelectedLoan() {
