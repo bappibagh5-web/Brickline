@@ -164,6 +164,8 @@ export default function RateCalculatorPage() {
         const effectiveLoanAmount = form.refinance === 'yes' ? refinanceLoanAmount : purchaseLoanAmount;
         const personallyGuaranteedValue = String(form.personally_guaranteed || '').trim();
         const requiresArv = form.property_rehab === 'yes';
+        const requiresRehabCost = form.property_rehab === 'yes';
+        const parsedRehabCost = parseCurrencyInput(form.rehab_budget);
         const parsedArv = parseCurrencyInput(form.comp_value);
 
         if (!personallyGuaranteedValue) {
@@ -179,6 +181,15 @@ export default function RateCalculatorPage() {
           if (!ignore) {
             setMetrics(null);
             setError('Please enter After Repair Value to continue');
+            setLoading(false);
+          }
+          return;
+        }
+
+        if (requiresRehabCost && parsedRehabCost <= 0) {
+          if (!ignore) {
+            setMetrics(null);
+            setError('Please enter a valid rehab cost greater than $0');
             setLoading(false);
           }
           return;
@@ -202,7 +213,7 @@ export default function RateCalculatorPage() {
           remaining_mortgage: requiresRemainingMortgage
             ? remainingMortgageAmount
             : 0,
-          rehab_cost: requiresArv ? parseCurrencyInput(form.rehab_budget) : 0
+          rehab_cost: requiresRehabCost ? parsedRehabCost : null
         };
         if (requiresArv) {
           payload.arv = parsedArv;
@@ -342,8 +353,8 @@ export default function RateCalculatorPage() {
         refinance_loan: refinanceLoanAmount,
         refinance_loan_amount: refinanceLoanAmount,
         remaining_mortgage: form.refinance === 'yes' && form.owned_six_months === 'yes' ? remainingMortgage : 0,
-        rehab_cost: rehabBudget,
-        rehab_budget: rehabBudget
+        rehab_cost: form.property_rehab === 'yes' ? rehabBudget : null,
+        rehab_budget: form.property_rehab === 'yes' ? rehabBudget : null
       };
       if (includesRehab) {
         calculatorInputsPayload.arv = compValue;
@@ -362,7 +373,7 @@ export default function RateCalculatorPage() {
         refinance_loan_amount: refinanceLoanAmount,
         prop_owned_6_months: form.owned_six_months,
         remaining_mortgage: form.refinance === 'yes' && form.owned_six_months === 'yes' ? remainingMortgage : 0,
-        rehab_budget: rehabBudget,
+        rehab_budget: form.property_rehab === 'yes' ? rehabBudget : null,
       };
       if (includesRehab) {
         calculatorResultsPayload.comp_value = compValue;

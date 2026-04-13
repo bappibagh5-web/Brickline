@@ -101,8 +101,10 @@ function getEstimatedPropertyValue(input) {
 
 function getRehabCost(input) {
   const rehabEnabled = String(input.property_rehab ?? input.rehab_enabled ?? 'yes').toLowerCase() !== 'no';
-  if (!rehabEnabled) return 0;
-  return toNumber(input.rehab_cost ?? input.rehab_budget ?? 0, 0);
+  if (!rehabEnabled) return null;
+  const raw = input.rehab_cost ?? input.rehab_budget;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
 }
 
 function getArv(input) {
@@ -173,7 +175,9 @@ function calculateLoanMetrics(input) {
   const loanAmount = getLoanAmount(input);
   const rehabEnabled = String(input.property_rehab ?? input.rehab_enabled ?? 'yes').toLowerCase() !== 'no';
   const isRefinance = isAffirmative(input.refinance);
-  const rehabCost = rehabEnabled ? getRehabCost(input) : 0;
+  const rehabCostRaw = getRehabCost(input);
+  const hasValidRehabCost = !rehabEnabled || (rehabCostRaw !== null && rehabCostRaw > 0);
+  const rehabCost = hasValidRehabCost && rehabCostRaw !== null ? rehabCostRaw : 0;
   const arv = rehabEnabled ? getArv(input) : 0;
 
   const purchaseLoanAmount = loanAmount;
@@ -204,6 +208,10 @@ function calculateLoanMetrics(input) {
     errors.push(
       'Reduce Initial Loan Amount. As-Is Loan-To-Value (AIV LTV) exceeds 75%'
     );
+  }
+
+  if (rehabEnabled && !hasValidRehabCost) {
+    errors.push('Please enter a valid rehab cost greater than $0');
   }
 
   if (!(isRefinance && !rehabEnabled) && ltcDecimal > policy.maxLTC) {
@@ -243,8 +251,8 @@ function calculateLoanMetrics(input) {
     total_loan: roundMoney(totalLoan),
     total_cost: roundMoney(totalCost),
     arv: roundMoney(arv),
-    ltc: rehabEnabled ? roundPercent(ltcDecimal) : null,
-    ltarv: rehabEnabled ? roundPercent(ltarvDecimal) : null,
+    ltc: rehabEnabled ? (hasValidRehabCost ? roundPercent(ltcDecimal) : null) : null,
+    ltarv: rehabEnabled ? (hasValidRehabCost ? roundPercent(ltarvDecimal) : null) : null,
     aiv_ltv: roundPercent(aivLtvDecimal),
     metric_mode: rehabEnabled ? 'rehab' : 'as_is',
     spread: roundMoney(spread),
