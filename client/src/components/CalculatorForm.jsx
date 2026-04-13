@@ -254,18 +254,26 @@ export default function CalculatorForm({
         <div className="pt-7 text-xs leading-5 text-[#6b7280]">
           {showArvField ? (
             <>
-              <p>
-                Loan-to-cost is <span className="font-semibold text-[#374151]">{formatPercent(metrics?.ltc)}</span>.
-              </p>
-              <p>
-                After-repair loan-to-value is{' '}
-                <span className="font-semibold text-[#374151]">{formatPercent(metrics?.ltarv)}</span>.
-              </p>
+              {metrics?.ltc !== null && metrics?.ltc !== undefined ? (
+                <p>
+                  Loan-to-cost is <span className="font-semibold text-[#374151]">{formatPercent(metrics?.ltc)}</span>.
+                </p>
+              ) : null}
+              {metrics?.ltarv !== null && metrics?.ltarv !== undefined ? (
+                <p>
+                  After-repair loan-to-value is{' '}
+                  <span className="font-semibold text-[#374151]">{formatPercent(metrics?.ltarv)}</span>.
+                </p>
+              ) : null}
             </>
           ) : (
-            <p>
-              Loan-to-value is <span className="font-semibold text-[#374151]">{formatPercent(metrics?.aiv_ltv)}</span>.
-            </p>
+            <>
+              {metrics?.aiv_ltv !== null && metrics?.aiv_ltv !== undefined ? (
+                <p>
+                  Loan-to-value is <span className="font-semibold text-[#374151]">{formatPercent(metrics?.aiv_ltv)}</span>.
+                </p>
+              ) : null}
+            </>
           )}
         </div>
       </div>

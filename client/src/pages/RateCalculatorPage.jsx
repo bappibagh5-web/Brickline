@@ -53,7 +53,7 @@ export default function RateCalculatorPage() {
     refinance_loan_amount: '$150,000',
     remaining_mortgage: '$0',
     rehab_budget: '$75,000',
-    comp_value: '$350,000'
+    comp_value: ''
   });
 
   useEffect(() => {
@@ -111,9 +111,12 @@ export default function RateCalculatorPage() {
               ? formatCurrencyInput(data.rehab_cost ?? data.rehab_budget)
               : prev.rehab_budget,
           comp_value:
-            (data.arv !== undefined || data.comp_value !== undefined)
-              ? formatCurrencyInput(data.arv ?? data.comp_value)
-              : prev.comp_value,
+            (() => {
+              const rawArv = data.arv ?? data.comp_value;
+              const parsedArv = Number(rawArv);
+              if (!Number.isFinite(parsedArv) || parsedArv <= 0) return '';
+              return formatCurrencyInput(parsedArv);
+            })(),
         }));
       } catch (_loadError) {
         if (!ignore) {
@@ -160,6 +163,8 @@ export default function RateCalculatorPage() {
         const refinanceLoanAmount = parseCurrencyInput(form.refinance_loan_amount);
         const effectiveLoanAmount = form.refinance === 'yes' ? refinanceLoanAmount : purchaseLoanAmount;
         const personallyGuaranteedValue = String(form.personally_guaranteed || '').trim();
+        const requiresArv = form.property_rehab === 'yes';
+        const parsedArv = parseCurrencyInput(form.comp_value);
 
         if (!personallyGuaranteedValue) {
           if (!ignore) {
@@ -170,7 +175,16 @@ export default function RateCalculatorPage() {
           return;
         }
 
-        const result = await calculateLoan(apiBaseUrl, {
+        if (requiresArv && parsedArv <= 0) {
+          if (!ignore) {
+            setMetrics(null);
+            setError('Please enter After Repair Value to continue');
+            setLoading(false);
+          }
+          return;
+        }
+
+        const payload = {
           fico_bucket: form.est_fico,
           est_fico: form.est_fico,
           personally_guaranteed: personallyGuaranteedValue,
@@ -188,9 +202,13 @@ export default function RateCalculatorPage() {
           remaining_mortgage: requiresRemainingMortgage
             ? remainingMortgageAmount
             : 0,
-          rehab_cost: form.property_rehab === 'yes' ? parseCurrencyInput(form.rehab_budget) : 0,
-          arv: form.property_rehab === 'yes' ? parseCurrencyInput(form.comp_value) : 0
-        });
+          rehab_cost: requiresArv ? parseCurrencyInput(form.rehab_budget) : 0
+        };
+        if (requiresArv) {
+          payload.arv = parsedArv;
+        }
+
+        const result = await calculateLoan(apiBaseUrl, payload);
         if (!ignore) {
           setMetrics(result);
         }
@@ -240,7 +258,7 @@ export default function RateCalculatorPage() {
       const next = {
         ...prev,
         ...(field === 'property_rehab' && value === 'no'
-          ? { rehab_budget: '$0', comp_value: '$0' }
+          ? { rehab_budget: '$0', comp_value: '' }
           : {}),
         [field]: nextValue
       };
@@ -288,6 +306,7 @@ export default function RateCalculatorPage() {
       const effectiveLoanAmount = form.refinance === 'yes' ? refinanceLoanAmount : purchaseLoanAmount;
       const rehabBudget = parseCurrencyInput(form.rehab_budget);
       const compValue = parseCurrencyInput(form.comp_value);
+      const includesRehab = form.property_rehab === 'yes' && compValue > 0;
 
       await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'selected_loan_product', {
         term: product.term,
@@ -305,7 +324,7 @@ export default function RateCalculatorPage() {
         monthlyPayment: product.monthly_payment
       });
 
-      await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'calculator_inputs', {
+      const calculatorInputsPayload = {
         property_state: form.property_state,
         property_type: form.property_type,
         propertyType: form.property_type,
@@ -324,12 +343,15 @@ export default function RateCalculatorPage() {
         refinance_loan_amount: refinanceLoanAmount,
         remaining_mortgage: form.refinance === 'yes' && form.owned_six_months === 'yes' ? remainingMortgage : 0,
         rehab_cost: rehabBudget,
-        rehab_budget: rehabBudget,
-        arv: form.property_rehab === 'yes' ? compValue : 0,
-        comp_value: form.property_rehab === 'yes' ? compValue : 0
-      });
+        rehab_budget: rehabBudget
+      };
+      if (includesRehab) {
+        calculatorInputsPayload.arv = compValue;
+        calculatorInputsPayload.comp_value = compValue;
+      }
+      await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'calculator_inputs', calculatorInputsPayload);
 
-      await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'calculator_results', {
+      const calculatorResultsPayload = {
         ...(metrics || {}),
         property_type: form.property_type,
         personally_guaranteed: form.personally_guaranteed,
@@ -341,9 +363,12 @@ export default function RateCalculatorPage() {
         prop_owned_6_months: form.owned_six_months,
         remaining_mortgage: form.refinance === 'yes' && form.owned_six_months === 'yes' ? remainingMortgage : 0,
         rehab_budget: rehabBudget,
-        comp_value: form.property_rehab === 'yes' ? compValue : 0,
-        arv: form.property_rehab === 'yes' ? compValue : 0
-      });
+      };
+      if (includesRehab) {
+        calculatorResultsPayload.comp_value = compValue;
+        calculatorResultsPayload.arv = compValue;
+      }
+      await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'calculator_results', calculatorResultsPayload);
 
       navigate(`/m/standardBorrower/eligibility?applicationId=${effectiveApplicationId}`);
     } catch (saveError) {
