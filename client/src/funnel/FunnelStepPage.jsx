@@ -7,6 +7,13 @@ import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
 import { funnelConfig, funnelInitialStepId } from './config.js';
 import { useFunnel } from './FunnelContext.jsx';
 import { getNextRoute, getStepByRoute } from './utils.js';
+import OnboardingLayout from './OnboardingLayout.jsx';
+import FinancingType from './steps/FinancingType.jsx';
+import DealsStep from './steps/DealsStep.jsx';
+import StateStep from './steps/StateStep.jsx';
+import LeadStep from './steps/LeadStep.jsx';
+import EntityStep from './steps/EntityStep.jsx';
+import EntityNameStep from './steps/EntityNameStep.jsx';
 import {
   getStoredApplicationId,
   setStoredApplicationId,
@@ -22,6 +29,17 @@ const US_STATES = [
   'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT',
   'VA', 'WA', 'WV', 'WI', 'WY'
 ];
+
+const ONBOARDING_STEP_ORDER = {
+  loanProgram: 1,
+  dealsLast24: 2,
+  propertyState: 3,
+  leadCapture: 4,
+  standardEntityQuestion: 5,
+  proEntityQuestion: 5,
+  standardEntityName: 6,
+  proEntityName: 6
+};
 
 const US_STATE_NAME_TO_CODE = {
   alabama: 'AL',
@@ -1701,6 +1719,20 @@ export default function FunnelStepPage() {
 
   const { stepId, step } = current;
   const value = getStepValue(step, answers);
+  const onboardingStepNumber = ONBOARDING_STEP_ORDER[stepId] || null;
+
+  const onboardingSubtitle = (() => {
+    if (stepId === 'loanProgram') {
+      return 'Get matched with the right loan structure in seconds.';
+    }
+    if (stepId === 'dealsLast24') {
+      return 'Tell us about your experience level so we can better tailoring your options.';
+    }
+    if (stepId === 'leadCapture') {
+      return 'Enter your details to continue your application.';
+    }
+    return step.description || '';
+  })();
 
   const canProceed = (() => {
     if (step.type === 'leadCapture') {
@@ -2201,6 +2233,84 @@ export default function FunnelStepPage() {
     if (stepId === funnelInitialStepId) return;
     navigate(-1);
   };
+
+  if (onboardingStepNumber) {
+    const sharedProps = {
+      canProceed,
+      onNext: handleNext
+    };
+
+    return (
+      <OnboardingLayout
+        stepNumber={onboardingStepNumber}
+        onBack={handleBack}
+        disableBack={stepId === funnelInitialStepId}
+      >
+        {stepId === 'loanProgram' ? (
+          <FinancingType
+            {...sharedProps}
+            title={step.title || ''}
+            description={onboardingSubtitle}
+            options={step.options || []}
+            value={value}
+            setValue={setStepValue}
+          />
+        ) : null}
+
+        {stepId === 'dealsLast24' ? (
+          <DealsStep
+            {...sharedProps}
+            title={step.title || ''}
+            description={onboardingSubtitle}
+            options={step.options || []}
+            value={value}
+            setValue={setStepValue}
+          />
+        ) : null}
+
+        {stepId === 'propertyState' ? (
+          <StateStep
+            {...sharedProps}
+            title={step.title || ''}
+            value={value}
+            setValue={setStepValue}
+            states={US_STATES}
+          />
+        ) : null}
+
+        {stepId === 'leadCapture' ? (
+          <LeadStep
+            {...sharedProps}
+            title={step.title || ''}
+            description={onboardingSubtitle}
+            value={value}
+            setValue={setStepValue}
+          />
+        ) : null}
+
+        {(stepId === 'standardEntityQuestion' || stepId === 'proEntityQuestion') ? (
+          <EntityStep
+            {...sharedProps}
+            title={step.title || ''}
+            options={step.options || []}
+            value={value}
+            setValue={setStepValue}
+          />
+        ) : null}
+
+        {(stepId === 'standardEntityName' || stepId === 'proEntityName') ? (
+          <EntityNameStep
+            {...sharedProps}
+            title={step.title || ''}
+            value={value}
+            setValue={setStepValue}
+          />
+        ) : null}
+
+        {error ? <p className="mt-3 text-sm font-semibold text-[#b63d3d]">{error}</p> : null}
+      </OnboardingLayout>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f3f4f4] text-[#1f2937]">
