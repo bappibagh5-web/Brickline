@@ -38,6 +38,7 @@ const TERM_SPREADS = {
 const PERSONAL_GUARANTEE_RATE_ADJUSTMENT = 1.0;
 const REFINANCE_SEASONING_RISK_ADJUSTMENT = 1.0;
 const MAX_AIV_LTV = 0.75;
+const MIN_REHAB_COST = 1000;
 
 const FICO_TERM_RATE_OVERRIDES = {
   '720-739': {
@@ -176,7 +177,7 @@ function calculateLoanMetrics(input) {
   const rehabEnabled = String(input.property_rehab ?? input.rehab_enabled ?? 'yes').toLowerCase() !== 'no';
   const isRefinance = isAffirmative(input.refinance);
   const rehabCostRaw = getRehabCost(input);
-  const hasValidRehabCost = !rehabEnabled || (rehabCostRaw !== null && rehabCostRaw > 0);
+  const hasValidRehabCost = !rehabEnabled || (rehabCostRaw !== null && rehabCostRaw >= MIN_REHAB_COST);
   const rehabCost = hasValidRehabCost && rehabCostRaw !== null ? rehabCostRaw : 0;
   const arv = rehabEnabled ? getArv(input) : 0;
 
@@ -211,7 +212,7 @@ function calculateLoanMetrics(input) {
   }
 
   if (rehabEnabled && !hasValidRehabCost) {
-    errors.push('Please enter a valid rehab cost greater than $0');
+    errors.push('Minimum rehab cost is $1,000');
   }
 
   if (!(isRefinance && !rehabEnabled) && ltcDecimal > policy.maxLTC) {

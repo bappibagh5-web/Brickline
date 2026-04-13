@@ -53,7 +53,8 @@ export default function CalculatorForm({
   form,
   onFormChange,
   metrics,
-  loading
+  loading,
+  rehabCostInvalid = false
 }) {
   const isRehabDisabled = form.property_rehab === 'no';
   const showArvField = !isRehabDisabled;
@@ -236,7 +237,9 @@ export default function CalculatorForm({
             className={`${inputClass} ${
               isRehabDisabled
                 ? 'cursor-not-allowed border-[#a8b2c2] bg-[#e5e7eb] text-[#6b7280]'
-                : ''
+                : rehabCostInvalid
+                  ? 'border-[#ef4444] ring-1 ring-[#ef4444]'
+                  : ''
             }`}
           />
         </label>

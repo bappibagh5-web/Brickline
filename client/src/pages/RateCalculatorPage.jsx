@@ -55,6 +55,7 @@ export default function RateCalculatorPage() {
     rehab_budget: '$75,000',
     comp_value: ''
   });
+  const rehabCostInvalid = form.property_rehab === 'yes' && parseCurrencyInput(form.rehab_budget) < 1000;
 
   useEffect(() => {
     if (!effectiveApplicationId) return;
@@ -186,10 +187,10 @@ export default function RateCalculatorPage() {
           return;
         }
 
-        if (requiresRehabCost && parsedRehabCost <= 0) {
+        if (requiresRehabCost && parsedRehabCost < 1000) {
           if (!ignore) {
             setMetrics(null);
-            setError('Please enter a valid rehab cost greater than $0');
+            setError('Minimum rehab cost is $1,000');
             setLoading(false);
           }
           return;
@@ -406,6 +407,7 @@ export default function RateCalculatorPage() {
             onFormChange={handleFormChange}
             metrics={metrics}
             loading={loading}
+            rehabCostInvalid={rehabCostInvalid}
           />
           <CalculatorResults
             metrics={metrics}

@@ -30,8 +30,8 @@ async function calculate(req, res, next) {
       }
       const rehabRaw = body.rehab_cost ?? body.rehab_budget;
       const rehabValue = Number(rehabRaw);
-      if (Number.isFinite(rehabValue) && rehabValue <= 0) {
-        throw createHttpError(400, 'Please enter a valid rehab cost greater than $0');
+      if (Number.isFinite(rehabValue) && rehabValue < 1000) {
+        throw createHttpError(400, 'Minimum rehab cost is $1,000');
       }
     }
 
