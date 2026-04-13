@@ -56,12 +56,25 @@ export default function RateCalculatorPage() {
     comp_value: ''
   });
   const rehabCostInvalid = form.property_rehab === 'yes' && parseCurrencyInput(form.rehab_budget) < 1000;
+  const requiresRemainingMortgage = form.refinance === 'yes' && form.owned_six_months === 'yes';
+  const remainingMortgageInput = String(form.remaining_mortgage || '').trim();
+  const remainingMortgageAmount = parseCurrencyInput(form.remaining_mortgage);
+  const requiresArv = form.property_rehab === 'yes';
+  const parsedArv = parseCurrencyInput(form.comp_value);
   const isFloridaCondo =
     String(form.property_state || '').toUpperCase() === 'FL'
     && String(form.property_type || '').trim() === 'Condo';
-  const resultErrors = isFloridaCondo
-    ? ['We do not currently finance this property type in Florida.']
-    : [];
+  const resultErrors = Array.from(
+    new Set([
+      ...(isFloridaCondo ? ['We do not currently finance this property type in Florida.'] : []),
+      ...(requiresArv && parsedArv <= 0 ? ['Please enter After Repair Value to continue'] : []),
+      ...(rehabCostInvalid ? ['Minimum rehab cost is $1,000'] : []),
+      ...(requiresRemainingMortgage && (!remainingMortgageInput || remainingMortgageAmount <= 0)
+        ? ['Please enter remaining mortgage balance to continue']
+        : []),
+      ...(error ? [error] : [])
+    ])
+  );
 
   useEffect(() => {
     if (!effectiveApplicationId) return;
@@ -153,22 +166,9 @@ export default function RateCalculatorPage() {
       setLoading(true);
       setError('');
       try {
-        if (isFloridaCondo) {
+        if (resultErrors.length > 0) {
           if (!ignore) {
             setMetrics(null);
-            setLoading(false);
-          }
-          return;
-        }
-
-        const requiresRemainingMortgage = form.refinance === 'yes' && form.owned_six_months === 'yes';
-        const remainingMortgageInput = String(form.remaining_mortgage || '').trim();
-        const remainingMortgageAmount = parseCurrencyInput(form.remaining_mortgage);
-
-        if (requiresRemainingMortgage && (!remainingMortgageInput || remainingMortgageAmount <= 0)) {
-          if (!ignore) {
-            setMetrics(null);
-            setError('Please enter remaining mortgage balance to continue');
             setLoading(false);
           }
           return;
@@ -178,33 +178,12 @@ export default function RateCalculatorPage() {
         const refinanceLoanAmount = parseCurrencyInput(form.refinance_loan_amount);
         const effectiveLoanAmount = form.refinance === 'yes' ? refinanceLoanAmount : purchaseLoanAmount;
         const personallyGuaranteedValue = String(form.personally_guaranteed || '').trim();
-        const requiresArv = form.property_rehab === 'yes';
         const requiresRehabCost = form.property_rehab === 'yes';
         const parsedRehabCost = parseCurrencyInput(form.rehab_budget);
-        const parsedArv = parseCurrencyInput(form.comp_value);
 
         if (!personallyGuaranteedValue) {
           if (!ignore) {
             setMetrics(null);
-            setError('Please select personally guaranteed to continue');
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (requiresArv && parsedArv <= 0) {
-          if (!ignore) {
-            setMetrics(null);
-            setError('Please enter After Repair Value to continue');
-            setLoading(false);
-          }
-          return;
-        }
-
-        if (requiresRehabCost && parsedRehabCost < 1000) {
-          if (!ignore) {
-            setMetrics(null);
-            setError('Minimum rehab cost is $1,000');
             setLoading(false);
           }
           return;
@@ -267,7 +246,8 @@ export default function RateCalculatorPage() {
     form.est_fico,
     form.personally_guaranteed,
     form.property_rehab,
-    isFloridaCondo
+    isFloridaCondo,
+    resultErrors.length
   ]);
 
   const handleFormChange = (field, value) => {
@@ -417,7 +397,6 @@ export default function RateCalculatorPage() {
           <h1 className="section-title">Estimate Your Bridge Rate</h1>
         </header>
 
-        {error ? <p className="text-sm font-medium text-[#b63d3d]">{error}</p> : null}
         {pageLoading ? <p className="text-sm text-[#60709a]">Loading application...</p> : null}
 
         <div className="space-y-4">
