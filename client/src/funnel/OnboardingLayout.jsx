@@ -3,14 +3,7 @@ import { BRAND_LOGOS } from '../lib/brandAssets.js';
 
 function RightPanel() {
   return (
-    <aside className="relative z-10 h-[280px] w-full overflow-hidden rounded-b-[20px] bg-[radial-gradient(circle_at_20%_10%,#1e48ff_0%,#071564_48%,#030a36_100%)] lg:sticky lg:top-0 lg:-ml-5 lg:h-full lg:w-[calc(40%+20px)] lg:min-w-[360px] lg:rounded-b-none lg:rounded-r-[20px]">
-      <div
-        className="pointer-events-none absolute inset-y-0 -left-5 hidden w-8 lg:block"
-        style={{
-          background: 'radial-gradient(circle_at_20%_10%,#1e48ff 0%,#071564 48%,#030a36 100%)',
-          clipPath: 'polygon(100% 0, 100% 100%, 0 100%)'
-        }}
-      />
+    <aside className="relative z-10 h-[280px] w-full overflow-hidden rounded-b-[20px] bg-[radial-gradient(circle_at_20%_10%,#1e48ff_0%,#071564_48%,#030a36_100%)] lg:sticky lg:top-0 lg:h-full lg:w-[40%] lg:min-w-[340px] lg:rounded-b-none lg:rounded-r-[20px]">
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:36px_36px]" />
 
       <div className="relative z-10 flex h-full flex-col px-5 py-4 lg:px-7 lg:py-6">
@@ -59,7 +52,11 @@ export default function OnboardingLayout({
   return (
     <div className="min-h-screen bg-[#eef2f8] p-3 lg:p-5">
       <div className="mx-auto flex w-full max-w-[1500px] flex-col overflow-hidden rounded-[20px] bg-white shadow-[0_20px_65px_rgba(15,35,95,0.12)] lg:h-[calc(100vh-40px)] lg:flex-row">
-        <section className="flex w-full flex-col bg-white lg:w-[60%]">
+        <section className="relative z-20 flex w-full flex-col bg-white lg:w-[60%]">
+          <div
+            className="pointer-events-none absolute inset-y-0 -right-5 hidden w-5 bg-white lg:block"
+            style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)' }}
+          />
           <div className="px-4 pb-3 pt-4 lg:px-8 lg:pb-4 lg:pt-6">
             <div className="grid grid-cols-[1fr_auto_1fr] items-center">
               <button
