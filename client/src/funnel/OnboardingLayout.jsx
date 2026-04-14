@@ -19,20 +19,19 @@ function RightPanel() {
 
           <div className="flex-1" />
 
-          <div className="relative mt-3 w-[300px] rounded-xl border border-white/20 bg-[#0f2d9f]/45 px-4 py-3 backdrop-blur-md lg:mt-10 lg:w-[360px] lg:px-6 lg:py-4">
+          <div className="relative mt-3 w-[300px] rounded-xl border border-white/20 bg-[#0f2d9f]/45 px-4 py-3 backdrop-blur-md lg:mt-10 lg:w-[350px] lg:px-5 lg:py-4">
             <span className="inline-block rounded-full bg-[#2f5cf3] px-3 py-1 text-[10px] font-semibold tracking-wide text-white lg:text-[11px]">
               NATIONWIDE INVESTOR LENDING
             </span>
             <div className="mt-3 flex items-start justify-between gap-4 lg:mt-4 lg:gap-6">
-              <div className="min-w-[102px]">
-                <p className="text-[34px] font-extrabold leading-none tracking-tight text-white lg:text-[40px]">$2.3B+</p>
+              <div className="min-w-[96px]">
+                <p className="text-[31px] font-extrabold leading-none tracking-tight text-white lg:text-[34px]">$2.3B+</p>
                 <p className="mt-1 text-[10px] font-medium tracking-[0.14em] text-white/70 lg:text-xs">FUNDED</p>
               </div>
               <div className="h-14 w-px bg-white/25 lg:h-16" />
-              <p className="pt-0.5 text-[15px] font-semibold leading-[1.2] text-white/95 lg:text-[19px]">
-                Built for speed,
-                <br />
-                not banks
+              <p className="pt-0.5 text-[15px] font-semibold leading-[1.18] text-white/95 lg:text-[17px]">
+                <span className="block whitespace-nowrap">Built for speed,</span>
+                <span className="block">not banks</span>
               </p>
             </div>
           </div>
