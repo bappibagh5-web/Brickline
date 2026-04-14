@@ -12,28 +12,32 @@ function RightPanel() {
           Need help? 1-844-415-4663
         </p>
 
-        <div className="relative mt-2 flex flex-1 items-center justify-center lg:mt-8">
+        <div className="relative mt-2 flex flex-1 flex-col items-center justify-center lg:mt-6">
           <div className="h-[170px] w-[270px] rounded-[20px] border border-[#3259ff]/40 bg-[radial-gradient(circle_at_50%_45%,rgba(73,147,255,0.35),rgba(4,18,89,0.2)_55%,transparent_75%)] p-4 shadow-[0_0_45px_rgba(33,104,255,0.38)] lg:h-[250px] lg:w-[390px] lg:p-6">
             <div className="h-full w-full rounded-[20px] border border-[#3f67ff]/40 bg-[radial-gradient(circle,rgba(72,124,255,0.8)_1.3px,transparent_1.4px)] [background-size:16px_16px]" />
           </div>
 
-          <div className="absolute bottom-2 left-1/2 w-[300px] -translate-x-1/2 rounded-xl border border-white/20 bg-[#0f2d9f]/45 px-4 py-3 backdrop-blur-md lg:bottom-6 lg:w-[360px] lg:px-6 lg:py-4">
+          <div className="flex-1" />
+
+          <div className="relative mt-3 w-[300px] rounded-xl border border-white/20 bg-[#0f2d9f]/45 px-4 py-3 backdrop-blur-md lg:mt-10 lg:w-[380px] lg:px-6 lg:py-5">
             <span className="inline-block rounded-full bg-[#2f5cf3] px-3 py-1 text-[10px] font-semibold tracking-wide text-white lg:text-[11px]">
               NATIONWIDE INVESTOR LENDING
             </span>
-            <div className="mt-2 flex items-center justify-between gap-3 lg:mt-3 lg:gap-4">
-              <div>
-                <p className="text-3xl font-extrabold tracking-tight text-white lg:text-[38px]">$2.3B+</p>
-                <p className="text-[10px] tracking-[0.14em] text-white/65 lg:text-xs">FUNDED</p>
+            <div className="mt-3 flex items-start justify-between gap-4 lg:mt-4 lg:gap-6">
+              <div className="min-w-[112px]">
+                <p className="text-[46px] font-extrabold leading-none tracking-tight text-white lg:text-[54px]">$2.3B+</p>
+                <p className="mt-1 text-[10px] font-medium tracking-[0.14em] text-white/70 lg:text-xs">FUNDED</p>
               </div>
-              <div className="h-10 w-px bg-white/25 lg:h-12" />
-              <p className="text-base font-medium leading-snug text-white/90 lg:text-[26px]">
+              <div className="h-14 w-px bg-white/25 lg:h-16" />
+              <p className="pt-0.5 text-[29px] font-semibold leading-[1.15] text-white/95 lg:text-[34px]">
                 Built for speed,
                 <br />
                 not banks
               </p>
             </div>
           </div>
+
+          <div className="h-2 lg:h-10" />
         </div>
       </div>
     </aside>
