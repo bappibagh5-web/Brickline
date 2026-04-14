@@ -24,12 +24,12 @@ function RightPanel() {
               NATIONWIDE INVESTOR LENDING
             </span>
             <div className="mt-3 flex items-start justify-between gap-4 lg:mt-4 lg:gap-6">
-              <div className="min-w-[110px]">
-                <p className="text-[42px] font-extrabold leading-none tracking-tight text-white lg:text-[50px]">$2.3B+</p>
+              <div className="min-w-[102px]">
+                <p className="text-[34px] font-extrabold leading-none tracking-tight text-white lg:text-[40px]">$2.3B+</p>
                 <p className="mt-1 text-[10px] font-medium tracking-[0.14em] text-white/70 lg:text-xs">FUNDED</p>
               </div>
               <div className="h-14 w-px bg-white/25 lg:h-16" />
-              <p className="pt-0.5 text-[19px] font-semibold leading-[1.2] text-white/95 lg:text-[25px]">
+              <p className="pt-0.5 text-[15px] font-semibold leading-[1.2] text-white/95 lg:text-[19px]">
                 Built for speed,
                 <br />
                 not banks
