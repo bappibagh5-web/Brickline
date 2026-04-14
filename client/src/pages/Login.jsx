@@ -6,6 +6,7 @@ import { getStoredApplicationId } from '../funnel/session.js';
 import { getApiBaseUrl } from '../lib/apiBaseUrl.js';
 import { getPostLoginFunnelRoute } from '../lib/applicationFlow.js';
 import { getRoleHomeRoute, getUserRole } from '../lib/roleRouting.js';
+import FunnelHeader from '../components/FunnelHeader.jsx';
 
 export default function Login() {
   const apiBaseUrl = getApiBaseUrl();
@@ -46,10 +47,13 @@ export default function Login() {
 
   if (!loading && user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f5f6fc] px-4">
-        <p className="text-sm text-[#667397]">
-          {resolvingRedirect ? 'Continuing your application...' : 'Redirecting...'}
-        </p>
+      <div className="min-h-screen bg-[#f5f6fc]">
+        <FunnelHeader />
+        <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4">
+          <p className="text-sm text-[#667397]">
+            {resolvingRedirect ? 'Continuing your application...' : 'Redirecting...'}
+          </p>
+        </div>
       </div>
     );
   }
@@ -95,46 +99,49 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f5f6fc] px-4">
-      <div className="panel w-full max-w-md p-8">
-        <h1 className="text-3xl font-bold text-[#1f2747]">Login</h1>
-        <p className="mt-2 text-sm text-[#667397]">Sign in to access your Brickline dashboard.</p>
+    <div className="min-h-screen bg-[#f5f6fc]">
+      <FunnelHeader />
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-4">
+        <div className="panel w-full max-w-md p-8">
+          <h1 className="text-3xl font-bold text-[#1f2747]">Login</h1>
+          <p className="mt-2 text-sm text-[#667397]">Sign in to access your Brickline dashboard.</p>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-[#344064]" htmlFor="email">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="h-11 w-full rounded-xl border border-[#dbe2ef] px-3 text-sm text-[#1f2747] focus:border-[#4063ee] focus:outline-none"
-            />
-          </div>
+          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-[#344064]" htmlFor="email">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="h-11 w-full rounded-xl border border-[#dbe2ef] px-3 text-sm text-[#1f2747] focus:border-[#4063ee] focus:outline-none"
+              />
+            </div>
 
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-[#344064]" htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="h-11 w-full rounded-xl border border-[#dbe2ef] px-3 text-sm text-[#1f2747] focus:border-[#4063ee] focus:outline-none"
-            />
-          </div>
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-[#344064]" htmlFor="password">
+                Password
+              </label>
+              <input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="h-11 w-full rounded-xl border border-[#dbe2ef] px-3 text-sm text-[#1f2747] focus:border-[#4063ee] focus:outline-none"
+              />
+            </div>
 
-          {error ? <p className="text-sm font-medium text-[#b63d3d]">{error}</p> : null}
+            {error ? <p className="text-sm font-medium text-[#b63d3d]">{error}</p> : null}
 
-          <button type="submit" disabled={submitting} className="topbar-btn w-full justify-center">
-            {submitting ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+            <button type="submit" disabled={submitting} className="topbar-btn w-full justify-center">
+              {submitting ? 'Logging in...' : 'Login'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

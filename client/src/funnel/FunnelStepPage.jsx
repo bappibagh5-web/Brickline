@@ -16,6 +16,7 @@ import EntityStep from './steps/EntityStep.jsx';
 import EntityNameStep from './steps/EntityNameStep.jsx';
 import AddressStep from './steps/AddressStep.jsx';
 import SubmissionStep from './steps/SubmissionStep.jsx';
+import CheckEmailStep from './steps/CheckEmailStep.jsx';
 import {
   getStoredApplicationId,
   setStoredApplicationId,
@@ -37,6 +38,7 @@ const ONBOARDING_STEP_ORDER = {
   dealsLast24: 2,
   propertyState: 3,
   leadCapture: 4,
+  accountCreationFlow: 4,
   standardEntityQuestion: 5,
   proEntityQuestion: 5,
   standardEntityName: 6,
@@ -2313,6 +2315,14 @@ export default function FunnelStepPage() {
             description={onboardingSubtitle}
             value={value}
             setValue={setStepValue}
+          />
+        ) : null}
+
+        {stepId === 'accountCreationFlow' ? (
+          <CheckEmailStep
+            title={step.title || ''}
+            description={step.description || ''}
+            onOpenEmail={handleOpenEmail}
           />
         ) : null}
 
