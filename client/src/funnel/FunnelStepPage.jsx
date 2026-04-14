@@ -2333,6 +2333,8 @@ export default function FunnelStepPage() {
             submitting={saving}
             submitError={submitError}
             submitSuccess={submitSuccess}
+            applicationId={applicationId}
+            apiBaseUrl={apiBaseUrl}
           />
         ) : null}
 

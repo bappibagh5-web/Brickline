@@ -107,7 +107,7 @@ export default function CalculatorResults({
                   type="button"
                   disabled={savingProduct || loading || disableChoose || !onChooseProduct}
                   onClick={() => onChooseProduct?.(product)}
-                  className="h-8 min-w-[78px] rounded-md bg-[#0f766e] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#0c655e] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="h-8 min-w-[78px] rounded-md bg-gradient-to-r from-[#2f54eb] to-[#2145df] px-3 text-xs font-semibold text-white transition-all duration-150 hover:from-[#284de4] hover:to-[#1d40d8] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {savingProduct ? 'Saving...' : 'Choose'}
                 </button>

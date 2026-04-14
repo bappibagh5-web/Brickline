@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 function formatMoney(value) {
   const numeric = Number(value);
   const safeValue = Number.isFinite(numeric) ? numeric : 0;
@@ -29,8 +31,38 @@ export default function SubmissionStep({
   onSubmit,
   submitting,
   submitError,
-  submitSuccess
+  submitSuccess,
+  applicationId,
+  apiBaseUrl
 }) {
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+
+  const handleDownloadSummary = async () => {
+    if (!applicationId || !apiBaseUrl) return;
+    setDownloadError('');
+    setDownloading(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/applications/${applicationId}/generate-loan-summary`);
+      if (!response.ok) {
+        throw new Error('Failed to generate loan summary.');
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = `loan-summary-${applicationId}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      setDownloadError(error.message || 'Could not download summary.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   return (
     <div className="flex h-full flex-col">
       <h1 className="text-[clamp(34px,3.1vw,48px)] font-bold leading-tight tracking-[-0.02em] text-[#0b1f57]">
@@ -69,6 +101,17 @@ export default function SubmissionStep({
             Please make sure your borrower and guarantor information is correct. In order to process your
             application quickly you can&apos;t make changes once submitted.
           </p>
+
+          <button
+            type="button"
+            onClick={handleDownloadSummary}
+            disabled={downloading || !applicationId}
+            className="inline-flex h-10 min-w-[170px] items-center justify-center rounded-lg border border-[#2f54eb] bg-white px-5 text-sm font-semibold text-[#2f54eb] transition-all duration-150 hover:bg-[#eef3ff] disabled:opacity-60"
+          >
+            {downloading ? 'Preparing PDF...' : 'Download PDF Summary'}
+          </button>
+
+          {downloadError ? <p className="text-xs font-medium text-[#b63d3d]">{downloadError}</p> : null}
 
           <button
             type="button"
