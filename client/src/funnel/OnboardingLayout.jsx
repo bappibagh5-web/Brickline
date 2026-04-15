@@ -81,13 +81,15 @@ export default function OnboardingLayout({
               <div />
             </div>
 
-            <div className="mt-4 mb-1 flex items-center gap-2">
-              <span className="inline-flex h-7 items-center rounded-full bg-[#2f54eb] px-4 text-xs font-semibold text-white">
-                Step {stepNumber} of 6
-              </span>
-              <span className="inline-flex h-7 items-center rounded-full bg-[#dbe4f7] px-4 text-xs font-medium text-[#6676a1]">
-                Loan Type
-              </span>
+            <div className="mx-auto mt-4 mb-1 w-full max-w-[720px]">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-7 items-center rounded-full bg-[#2f54eb] px-4 text-xs font-semibold text-white">
+                  Step {stepNumber} of 6
+                </span>
+                <span className="inline-flex h-7 items-center rounded-full bg-[#dbe4f7] px-4 text-xs font-medium text-[#6676a1]">
+                  Loan Type
+                </span>
+              </div>
             </div>
           </div>
 
