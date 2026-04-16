@@ -8,6 +8,7 @@ import { funnelConfig, funnelInitialStepId } from './config.js';
 import { useFunnel } from './FunnelContext.jsx';
 import { getNextRoute, getStepByRoute } from './utils.js';
 import OnboardingLayout from './OnboardingLayout.jsx';
+import StepLayout from './StepLayout.jsx';
 import FinancingType from './steps/FinancingType.jsx';
 import DealsStep from './steps/DealsStep.jsx';
 import StateStep from './steps/StateStep.jsx';
@@ -38,10 +39,21 @@ const LAST_FUNNEL_ROUTE_KEY = 'brickline:last-funnel-route';
 
 const ONBOARDING_STEP_ORDER = {
   loanProgram: 1,
+  rentalExperience: 2,
+  rentalPersonalHome: 3,
+  rentalDisqualification: 3,
+  rentalPropertyState: 4,
+  rentalLeadCapture: 5,
+  rentalEntityOwnership: 7,
+  rentalEntityName: 8,
+  rentalConfirmation: 10,
+  rentalPropertyAddress: 11,
+  rentalExpectedClosingDate: 12,
+  rentalBorrowerDetails: 13,
+  rentalReviewSubmit: 14,
   dealsLast24: 2,
   propertyState: 3,
   leadCapture: 4,
-  accountCreationFlow: 4,
   standardEntityQuestion: 5,
   proEntityQuestion: 5,
   standardEntityName: 6,
@@ -1709,6 +1721,28 @@ function StepRenderer({
     );
   }
 
+  if (step.type === 'confirmation') {
+    return (
+      <div className="mt-6 space-y-4">
+        <div className="rounded-xl border border-[#d4dbeb] bg-white p-4 text-sm text-[#475569]">
+          <p className="font-medium text-[#1f2937]">Your profile and pricing details are saved.</p>
+          <p className="mt-1">Continue to complete the remaining steps and submit your application.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (step.type === 'disqualification') {
+    return (
+      <div className="mt-6 space-y-4">
+        <div className="rounded-xl border border-[#f2b8b8] bg-[#fff5f5] p-4 text-sm text-[#8f2a2a]">
+          <p className="font-semibold">This scenario is not eligible for Rental (DSCR).</p>
+          <p className="mt-1">Please choose another financing path to continue.</p>
+        </div>
+      </div>
+    );
+  }
+
   return null;
 }
 
@@ -1771,7 +1805,15 @@ export default function FunnelStepPage() {
     }
   }, [location.pathname, stepId]);
   const value = getStepValue(step, answers);
-  const onboardingStepNumber = ONBOARDING_STEP_ORDER[stepId] || null;
+  const isRentalFlow = Boolean(
+    answers?.loan_program === 'rental'
+    || location.pathname.startsWith('/m/rental')
+    || (stepId === 'accountCreationFlow' && answers?.loan_program === 'rental')
+  );
+  const onboardingStepNumber = stepId === 'accountCreationFlow'
+    ? (isRentalFlow ? 6 : 4)
+    : (ONBOARDING_STEP_ORDER[stepId] || null);
+  const onboardingTotalSteps = isRentalFlow ? 14 : 9;
   const storedBorrower = getStoredBorrower() || {};
   const checkEmailFirstName = String(
     answers?.first_name
@@ -1790,6 +1832,12 @@ export default function FunnelStepPage() {
   const onboardingSubtitle = (() => {
     if (stepId === 'loanProgram') {
       return 'Get matched with the right loan structure in seconds.';
+    }
+    if (stepId === 'rentalExperience') {
+      return 'Tell us about your experience so we can tailor your DSCR options.';
+    }
+    if (stepId === 'rentalLeadCapture') {
+      return 'Enter your details to continue your application.';
     }
     if (stepId === 'dealsLast24') {
       return 'Tell us about your experience level so we can better tailoring your options.';
@@ -1844,6 +1892,10 @@ export default function FunnelStepPage() {
 
     if (step.type === 'reviewSubmit') {
       return true;
+    }
+
+    if (step.type === 'confirmation' || step.type === 'disqualification') {
+      return Boolean(step.next);
     }
 
     if (!step.key) {
@@ -2343,6 +2395,7 @@ export default function FunnelStepPage() {
     return (
       <OnboardingLayout
         stepNumber={onboardingStepNumber}
+        totalSteps={onboardingTotalSteps}
         onBack={handleBack}
         disableBack={stepId === funnelInitialStepId}
         hideTopBack={onboardingStepNumber !== 1}
@@ -2359,7 +2412,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'dealsLast24' ? (
+        {stepId === 'dealsLast24' || stepId === 'rentalExperience' ? (
           <DealsStep
             {...sharedProps}
             title={step.title || ''}
@@ -2372,7 +2425,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'propertyState' ? (
+        {stepId === 'propertyState' || stepId === 'rentalPropertyState' ? (
           <StateStep
             {...sharedProps}
             title={step.title || ''}
@@ -2383,7 +2436,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'leadCapture' ? (
+        {stepId === 'leadCapture' || stepId === 'rentalLeadCapture' ? (
           <LeadStep
             {...sharedProps}
             title={step.title || ''}
@@ -2405,7 +2458,7 @@ export default function FunnelStepPage() {
           </div>
         ) : null}
 
-        {(stepId === 'standardEntityQuestion' || stepId === 'proEntityQuestion') ? (
+        {(stepId === 'standardEntityQuestion' || stepId === 'proEntityQuestion' || stepId === 'rentalPersonalHome' || stepId === 'rentalEntityOwnership') ? (
           <EntityStep
             {...sharedProps}
             title={step.title || ''}
@@ -2417,7 +2470,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {(stepId === 'standardEntityName' || stepId === 'proEntityName') ? (
+        {(stepId === 'standardEntityName' || stepId === 'proEntityName' || stepId === 'rentalEntityName') ? (
           <EntityNameStep
             {...sharedProps}
             title={step.title || ''}
@@ -2427,7 +2480,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'propertyAddress' ? (
+        {stepId === 'propertyAddress' || stepId === 'rentalPropertyAddress' ? (
           <AddressStep
             {...sharedProps}
             title={step.title || ''}
@@ -2442,7 +2495,45 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'reviewSubmit' ? (
+        {stepId === 'rentalExpectedClosingDate' ? (
+          <div className="pt-2">
+            <StepRenderer
+              step={step}
+              value={value}
+              setValue={setStepValue}
+              onGoBack={handleBack}
+              onNext={handleNext}
+              canProceed={canProceed}
+              saving={saving}
+              initializing={initializing}
+              error={error}
+              submitError={submitError}
+              submitSuccess={submitSuccess}
+              applicationId={applicationId}
+              apiBaseUrl={apiBaseUrl}
+              onSubmit={handleSubmitForReview}
+            />
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="inline-flex h-11 min-w-[88px] items-center justify-center rounded-lg border border-[#d4dbeb] bg-white px-4 text-sm font-semibold text-[#4d5d86] transition-all duration-150 hover:bg-[#f5f8ff]"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={!canProceed}
+                className="inline-flex h-11 min-w-[110px] items-center justify-center rounded-lg bg-gradient-to-r from-[#2f54eb] to-[#2145df] px-5 text-sm font-semibold text-white transition-all duration-150 disabled:bg-[#cfd8ea] disabled:text-white/85"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {(stepId === 'reviewSubmit' || stepId === 'rentalReviewSubmit') ? (
           <SubmissionStep
             summary={value}
             onGoBack={handleBack}
@@ -2453,6 +2544,92 @@ export default function FunnelStepPage() {
             applicationId={applicationId}
             apiBaseUrl={apiBaseUrl}
           />
+        ) : null}
+
+        {stepId === 'rentalBorrowerDetails' ? (
+          <StepRenderer
+            step={step}
+            value={value}
+            setValue={setStepValue}
+            onGoBack={handleBack}
+            onNext={handleNext}
+            canProceed={canProceed}
+            saving={saving}
+            initializing={initializing}
+            error={error}
+            submitError={submitError}
+            submitSuccess={submitSuccess}
+            applicationId={applicationId}
+            apiBaseUrl={apiBaseUrl}
+            onSubmit={handleSubmitForReview}
+          />
+        ) : null}
+
+        {stepId === 'rentalConfirmation' ? (
+          <div className="pt-2">
+            <StepLayout
+              title={step.title || ''}
+              subtitle={step.description || ''}
+              content={(
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-[#d4dbeb] bg-white p-4 text-sm text-[#475569]">
+                    <p className="font-medium text-[#1f2937]">Your estimated rates are now ready.</p>
+                    <p className="mt-1">Continue to provide property and borrower details for submission.</p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handleBack}
+                      className="inline-flex h-11 min-w-[88px] items-center justify-center rounded-lg border border-[#d4dbeb] bg-white px-4 text-sm font-semibold text-[#4d5d86] transition-all duration-150 hover:bg-[#f5f8ff]"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleNext}
+                      disabled={!canProceed}
+                      className="inline-flex h-11 min-w-[110px] items-center justify-center rounded-lg bg-gradient-to-r from-[#2f54eb] to-[#2145df] px-5 text-sm font-semibold text-white transition-all duration-150 disabled:bg-[#cfd8ea] disabled:text-white/85"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </div>
+              )}
+            />
+          </div>
+        ) : null}
+
+        {stepId === 'rentalDisqualification' ? (
+          <div className="pt-2">
+            <StepLayout
+              title={step.title || ''}
+              subtitle={step.description || ''}
+              content={(
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-[#f2b8b8] bg-[#fff5f5] p-4 text-sm text-[#8f2a2a]">
+                    <p className="font-semibold">This route cannot proceed with DSCR.</p>
+                    <p className="mt-1">Please go back and choose another financing path.</p>
+                  </div>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <button
+                      type="button"
+                      onClick={handleBack}
+                      className="inline-flex h-11 min-w-[88px] items-center justify-center rounded-lg border border-[#d4dbeb] bg-white px-4 text-sm font-semibold text-[#4d5d86] transition-all duration-150 hover:bg-[#f5f8ff]"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(funnelConfig[funnelInitialStepId].route)}
+                      className="inline-flex h-11 min-w-[140px] items-center justify-center rounded-lg bg-gradient-to-r from-[#2f54eb] to-[#2145df] px-5 text-sm font-semibold text-white transition-all duration-150"
+                    >
+                      Start over
+                    </button>
+                  </div>
+                </div>
+              )}
+            />
+          </div>
         ) : null}
 
         {error ? <p className="mt-3 text-sm font-semibold text-[#b63d3d]">{error}</p> : null}

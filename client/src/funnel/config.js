@@ -1,5 +1,6 @@
 const EXPERIENCE_STANDARD = ['none', 'one_two'];
 const EXPERIENCE_PRO = ['three_four', 'five_plus'];
+const RENTAL_EXPERIENCE_DISQUALIFY = ['none'];
 
 export const funnelConfig = {
   loanProgram: {
@@ -10,10 +11,71 @@ export const funnelConfig = {
     options: [
       { label: 'Fix & Flip / Bridge', value: 'fix_flip' },
       { label: 'New Construction', value: 'new_construction' },
-      { label: 'Rental', value: 'rental' },
+      { label: 'Rental (DSCR)', value: 'rental' },
       { label: 'Not sure yet', value: 'unsure' }
     ],
-    next: 'dealsLast24'
+    next: {
+      rental: 'rentalExperience',
+      fix_flip: 'dealsLast24',
+      new_construction: 'dealsLast24',
+      unsure: 'dealsLast24'
+    }
+  },
+
+  rentalExperience: {
+    step_key: 'rental_experience_level',
+    route: '/m/rental/experience',
+    key: 'rental_experience_level',
+    title: 'How many investment properties have you financed or refinanced in the last 24 months?',
+    options: [
+      { label: 'None', value: 'none' },
+      { label: '1-4 properties', value: 'one_four' },
+      { label: '5-9 properties', value: 'five_nine' },
+      { label: 'Over 10 properties', value: 'over_ten' }
+    ],
+    next: ({ value }) => (RENTAL_EXPERIENCE_DISQUALIFY.includes(value) ? 'rentalPersonalHome' : 'rentalPropertyState')
+  },
+
+  rentalPersonalHome: {
+    step_key: 'rental_personal_home',
+    route: '/m/rental/personal-home',
+    key: 'rental_personal_home',
+    title: 'Is this loan for your personal home?',
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' }
+    ],
+    next: {
+      yes: 'rentalDisqualification',
+      no: 'rentalPropertyState'
+    }
+  },
+
+  rentalDisqualification: {
+    step_key: 'rental_disqualification',
+    route: '/m/rental/disqualified',
+    title: 'This loan program is for investment properties only.',
+    description: 'Because this is for a personal home, you do not qualify for the Rental (DSCR) funnel.',
+    type: 'disqualification',
+    next: null
+  },
+
+  rentalPropertyState: {
+    step_key: 'rental_property_state',
+    route: '/m/rental/property-state',
+    key: 'property_state',
+    title: 'Which state is your property located in?',
+    type: 'select',
+    next: 'rentalLeadCapture'
+  },
+
+  rentalLeadCapture: {
+    step_key: 'rental_lead_capture',
+    route: '/m/rental/lead-capture',
+    key: 'borrower',
+    title: 'You’re one step away from seeing your financing path',
+    type: 'leadCapture',
+    next: ({ isAuthenticated }) => (isAuthenticated ? 'rentalEntityOwnership' : 'accountCreationFlow')
   },
 
   dealsLast24: {
@@ -55,7 +117,32 @@ export const funnelConfig = {
     route: '/check-email',
     title: 'Check your email',
     description: "We've sent you a secure link to continue your application.",
-    next: ({ answers }) => getEntityStepByExperience(answers)
+    next: ({ answers, isAuthenticated }) => getPostAuthStep(answers, isAuthenticated)
+  },
+
+  rentalEntityOwnership: {
+    step_key: 'rental_entity_question',
+    route: '/m/rental/entity-ownership',
+    key: 'rental_has_entity',
+    title: 'Do you hold title to your investment properties in an entity?',
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' }
+    ],
+    next: {
+      yes: 'rentalEntityName',
+      no: 'rateCalculator'
+    }
+  },
+
+  rentalEntityName: {
+    step_key: 'rental_entity_name',
+    route: '/m/rental/entity-name',
+    key: 'entity_name',
+    title: 'What is your business entity name?',
+    type: 'input',
+    inputType: 'text',
+    next: 'rateCalculator'
   },
 
   standardEntityQuestion: {
@@ -126,6 +213,55 @@ export const funnelConfig = {
     next: 'eligibilityConfirm'
   },
 
+  rentalConfirmation: {
+    step_key: 'rental_confirmation',
+    route: '/m/rental/confirmation',
+    key: 'rental_confirmation',
+    title: 'Great news. Your estimated terms are ready.',
+    description: 'Your pricing has been calculated successfully. Continue to complete the final steps.',
+    type: 'confirmation',
+    next: 'rentalPropertyAddress'
+  },
+
+  rentalPropertyAddress: {
+    step_key: 'rental_property_address',
+    route: '/m/rental/property-address',
+    key: 'rental_property_address',
+    title: 'What is the address of the property you would like to finance?',
+    type: 'address',
+    addressPrefix: 'finance_property',
+    next: 'rentalExpectedClosingDate'
+  },
+
+  rentalExpectedClosingDate: {
+    step_key: 'rental_expected_closing_date',
+    route: '/m/rental/expected-closing-date',
+    key: 'preferred_signing_date',
+    title: 'What is your preferred signing date?',
+    type: 'signingDate',
+    next: 'rentalBorrowerDetails'
+  },
+
+  rentalBorrowerDetails: {
+    step_key: 'rental_borrower_details',
+    route: '/m/rental/borrower-details',
+    key: 'borrower_details',
+    title: 'Entity and Individual Details',
+    type: 'borrowerDetails',
+    inlineActions: true,
+    next: 'rentalReviewSubmit'
+  },
+
+  rentalReviewSubmit: {
+    step_key: 'rental_review_submit',
+    route: '/m/rental/review-submit',
+    key: 'review_submit',
+    title: 'Review Your Loan Details.',
+    type: 'reviewSubmit',
+    inlineActions: true,
+    next: null
+  },
+
   eligibilityConfirm: {
     step_key: 'eligibility_confirmations',
     route: '/m/standardBorrower/eligibility',
@@ -194,6 +330,19 @@ function getEntityStepByExperience(answers) {
   }
 
   return 'standardEntityQuestion';
+}
+
+function getPostAuthStep(answers, isAuthenticated) {
+  if (!isAuthenticated) {
+    return 'accountCreationFlow';
+  }
+
+  const loanProgram = answers?.loan_program;
+  if (loanProgram === 'rental') {
+    return 'rentalEntityOwnership';
+  }
+
+  return getEntityStepByExperience(answers);
 }
 
 export const funnelInitialStepId = 'loanProgram';

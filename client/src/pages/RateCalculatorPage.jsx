@@ -40,6 +40,7 @@ export default function RateCalculatorPage() {
   const [savingProduct, setSavingProduct] = useState(false);
   const [error, setError] = useState('');
   const [metrics, setMetrics] = useState(null);
+  const [loanProgram, setLoanProgram] = useState('');
   const [form, setForm] = useState({
     property_state: 'FL',
     property_type: '',
@@ -87,6 +88,7 @@ export default function RateCalculatorPage() {
         const application = await getApplication(apiBaseUrl, effectiveApplicationId);
         if (ignore) return;
         const data = application?.application_data || {};
+        setLoanProgram(String(data.loan_program || ''));
         const personallyGuaranteed = String(
           data.personally_guaranteed
           || data.personallyGuaranteed
@@ -381,7 +383,10 @@ export default function RateCalculatorPage() {
       }
       await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'calculator_results', calculatorResultsPayload);
 
-      navigate(`/m/standardBorrower/reviewSubmit?applicationId=${effectiveApplicationId}`);
+      const nextRoute = loanProgram === 'rental'
+        ? '/m/rental/confirmation'
+        : '/m/standardBorrower/reviewSubmit';
+      navigate(`${nextRoute}?applicationId=${effectiveApplicationId}`);
     } catch (saveError) {
       setError(saveError.message || 'Failed to save selected loan product.');
     } finally {
@@ -391,7 +396,8 @@ export default function RateCalculatorPage() {
 
   return (
     <OnboardingLayout
-      stepNumber={8}
+      stepNumber={loanProgram === 'rental' ? 9 : 8}
+      totalSteps={loanProgram === 'rental' ? 14 : 9}
       onBack={() => navigate(-1)}
       disableBack={false}
     >
