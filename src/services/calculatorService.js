@@ -41,12 +41,45 @@ const MAX_AIV_LTV = 0.75;
 const MIN_REHAB_COST = 1000;
 
 const FICO_TERM_RATE_OVERRIDES = {
+  '700-719': {
+    12: 9.5,
+    18: 10.0,
+    24: 10.5
+  },
   '720-739': {
     12: 9.25,
     18: 9.75,
     24: 10.25
+  },
+  '740-759': {
+    12: 8.95,
+    18: 9.45,
+    24: 9.95
+  },
+  '760-779': {
+    12: 8.75,
+    18: 9.25,
+    24: 9.75
+  },
+  'Over 780': {
+    12: 8.65,
+    18: 9.15,
+    24: 9.65
   }
 };
+
+const FICO_RATE_ORDER = [
+  '600-619',
+  '620-639',
+  '640-659',
+  '660-679',
+  '680-699',
+  '700-719',
+  '720-739',
+  '740-759',
+  '760-779',
+  'Over 780'
+];
 
 const MIN_DISPLAY_LOAN = 40000;
 const MIN_LOAN_AMOUNT = 100000;
@@ -117,6 +150,55 @@ function isAffirmative(value) {
   return String(value).toLowerCase() === 'yes' || String(value).toLowerCase() === 'true';
 }
 
+function getRawRatesForFico(fico, ltcDecimal, personalGuaranteeAdjustment, refinanceSeasoningAdjustment) {
+  const overrideRates = FICO_TERM_RATE_OVERRIDES[fico];
+  if (overrideRates) {
+    return [12, 18, 24].map((term) => ({
+      term,
+      rate: Number((toNumber(overrideRates[term], 0) + personalGuaranteeAdjustment + refinanceSeasoningAdjustment).toFixed(3))
+    }));
+  }
+
+  const bucket = FICO_PRICING_BUCKET_MAP[fico];
+  if (!bucket) return [];
+
+  const band = getLeverageBand(ltcDecimal);
+  const base12 = BASE_RATE_12_MONTH[bucket]?.[band];
+  if (!Number.isFinite(base12)) return [];
+
+  return [12, 18, 24].map((term) => ({
+    term,
+    rate: Number((base12 + TERM_SPREADS[term] + personalGuaranteeAdjustment + refinanceSeasoningAdjustment).toFixed(3))
+  }));
+}
+
+function applyMonotonicRateGuard(fico, currentRates, ltcDecimal, personalGuaranteeAdjustment, refinanceSeasoningAdjustment) {
+  const currentIndex = FICO_RATE_ORDER.indexOf(fico);
+  if (currentIndex <= 0) return currentRates;
+
+  const priorFico = FICO_RATE_ORDER[currentIndex - 1];
+  const priorRates = getRawRatesForFico(priorFico, ltcDecimal, personalGuaranteeAdjustment, refinanceSeasoningAdjustment);
+  if (!priorRates.length) return currentRates;
+
+  return currentRates.map((item) => {
+    const prior = priorRates.find((priorItem) => priorItem.term === item.term);
+    if (!prior) return item;
+
+    if (item.rate > prior.rate) {
+      console.error('[Calculator] Non-monotonic rate detected. Clamping to preserve credit-tier ordering.', {
+        fico,
+        priorFico,
+        term: item.term,
+        currentRate: item.rate,
+        priorRate: prior.rate
+      });
+      return { ...item, rate: prior.rate };
+    }
+
+    return item;
+  });
+}
+
 function getPricingOptions(input, loanAmount, ltcDecimal, isEligible) {
   if (!isEligible) return [];
 
@@ -133,31 +215,23 @@ function getPricingOptions(input, loanAmount, ltcDecimal, isEligible) {
     ? REFINANCE_SEASONING_RISK_ADJUSTMENT
     : 0.0;
 
-  const overrideRates = FICO_TERM_RATE_OVERRIDES[fico];
-  if (overrideRates) {
-    return [12, 18, 24].map((term) => {
-      const baseRate = toNumber(overrideRates[term], 0);
-      const rate = Number((baseRate + personalGuaranteeAdjustment + refinanceSeasoningAdjustment).toFixed(3));
-      const annualRateDecimal = rate / 100;
-      const monthlyPayment = roundMoney((loanAmount * annualRateDecimal) / 12);
-      return {
-        term,
-        rate,
-        monthly_payment: monthlyPayment
-      };
-    });
-  }
+  const rawRates = getRawRatesForFico(
+    fico,
+    ltcDecimal,
+    personalGuaranteeAdjustment,
+    refinanceSeasoningAdjustment
+  );
+  if (!rawRates.length) return [];
 
-  const bucket = FICO_PRICING_BUCKET_MAP[fico];
-  if (!bucket) return [];
+  const guardedRates = applyMonotonicRateGuard(
+    fico,
+    rawRates,
+    ltcDecimal,
+    personalGuaranteeAdjustment,
+    refinanceSeasoningAdjustment
+  );
 
-  const band = getLeverageBand(ltcDecimal);
-  const base12 = BASE_RATE_12_MONTH[bucket]?.[band];
-  if (!Number.isFinite(base12)) return [];
-
-  return [12, 18, 24].map((term) => {
-    const baseRate = base12 + TERM_SPREADS[term];
-    const rate = Number((baseRate + personalGuaranteeAdjustment + refinanceSeasoningAdjustment).toFixed(3));
+  return guardedRates.map(({ term, rate }) => {
     const annualRateDecimal = rate / 100;
     const monthlyPayment = roundMoney((loanAmount * annualRateDecimal) / 12);
     return {
