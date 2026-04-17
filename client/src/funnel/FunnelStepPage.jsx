@@ -2213,10 +2213,19 @@ export default function FunnelStepPage() {
       autoAdvanceTimeoutRef.current = null;
     }
 
-    if (!computeCanProceed(nextValueOverride)) return;
+    const resolvedNextValue = (
+      nextValueOverride
+      && typeof nextValueOverride === 'object'
+      && typeof nextValueOverride.preventDefault === 'function'
+      && Object.prototype.hasOwnProperty.call(nextValueOverride, 'nativeEvent')
+    )
+      ? value
+      : nextValueOverride;
+
+    if (!computeCanProceed(resolvedNextValue)) return;
 
     setError('');
-    const nextRoute = getNextRoute(stepId, nextValueOverride, answers, {
+    const nextRoute = getNextRoute(stepId, resolvedNextValue, answers, {
       isAuthenticated: Boolean(user)
     });
     if (!nextRoute) return;
@@ -2230,11 +2239,11 @@ export default function FunnelStepPage() {
     void (async () => {
       try {
         const activeApplicationId = applicationId || await ensureApplicationSession();
-        const payloadData = getStepPayload(nextValueOverride);
+        const payloadData = getStepPayload(resolvedNextValue);
         const shouldSaveStep = Boolean(payloadData && activeApplicationId);
 
-        if (step.type === 'leadCapture' && typeof nextValueOverride?.email === 'string') {
-          setStoredFunnelEmail(nextValueOverride.email);
+        if (step.type === 'leadCapture' && typeof resolvedNextValue?.email === 'string') {
+          setStoredFunnelEmail(resolvedNextValue.email);
         }
 
         if (!shouldSaveStep) return;
