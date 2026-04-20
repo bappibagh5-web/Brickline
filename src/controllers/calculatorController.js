@@ -1,4 +1,4 @@
-const { calculateLoanMetrics } = require('../services/calculatorService');
+const { calculateLoanMetrics, calculateDscrMetrics } = require('../services/calculatorService');
 
 function createHttpError(status, message) {
   const error = new Error(message);
@@ -62,5 +62,40 @@ async function calculate(req, res, next) {
 }
 
 module.exports = {
-  calculate
+  calculate,
+  calculateDscr(req, res, next) {
+    try {
+      const body = req.body || {};
+      const propertyState = String(body.property_state ?? body.propertyState ?? '').toUpperCase();
+      const propertyType = String(body.property_type ?? body.propertyType ?? '').trim();
+
+      if (propertyState === 'FL' && propertyType === 'Condo') {
+        return res.status(400).json({
+          error: 'unsupported_property_type',
+          message: 'We do not currently finance this property type in Florida.'
+        });
+      }
+
+      const required = ['loan_amount', 'fico_bucket', 'prepayment_penalty'];
+      const missing = required.filter((field) => {
+        const value = body[field] ?? body[field.replace(/_([a-z])/g, (_, char) => char.toUpperCase())];
+        return value === undefined || value === null || value === '';
+      });
+
+      if (missing.length > 0) {
+        throw createHttpError(400, `Missing required fields: ${missing.join(', ')}`);
+      }
+
+      const data = calculateDscrMetrics(body);
+      res.status(200).json({
+        success: true,
+        data
+      });
+    } catch (error) {
+      if (!error.status) {
+        error.status = 400;
+      }
+      next(error);
+    }
+  }
 };

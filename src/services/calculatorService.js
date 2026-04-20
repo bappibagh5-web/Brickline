@@ -83,6 +83,205 @@ const FICO_RATE_ORDER = [
 
 const MIN_DISPLAY_LOAN = 40000;
 const MIN_LOAN_AMOUNT = 100000;
+const DSCR_MIN_LOAN_AMOUNT = 100000;
+const DSCR_MAX_PURCHASE_LTV = 0.8;
+const DSCR_MAX_REFINANCE_LTV = 0.75;
+
+const DSCR_PRODUCTS = [
+  { key: '5/1 Adjustable', amortized: true },
+  { key: 'Interest-Only 5/1 Adjustable', amortized: false },
+  { key: '7/1 Adjustable', amortized: true },
+  { key: 'Interest-Only 7/1 Adjustable', amortized: false },
+  { key: '30 Year Fixed', amortized: true },
+  { key: 'Interest-Only 30 Year Fixed', amortized: false }
+];
+
+const DSCR_PREPAY_OPTIONS = ['3-year', '5-year', '7-year'];
+
+const DSCR_RATE_MATRIX = {
+  '660-679': {
+    '3-year': {
+      '5/1 Adjustable': 6.875,
+      'Interest-Only 5/1 Adjustable': 7.0,
+      '7/1 Adjustable': 6.875,
+      'Interest-Only 7/1 Adjustable': 7.0,
+      '30 Year Fixed': 7.0,
+      'Interest-Only 30 Year Fixed': 7.0
+    },
+    '5-year': {
+      '5/1 Adjustable': 6.75,
+      'Interest-Only 5/1 Adjustable': 6.875,
+      '7/1 Adjustable': 6.75,
+      'Interest-Only 7/1 Adjustable': 6.875,
+      '30 Year Fixed': 6.875,
+      'Interest-Only 30 Year Fixed': 6.875
+    },
+    '7-year': {
+      '5/1 Adjustable': 6.5,
+      'Interest-Only 5/1 Adjustable': 6.625,
+      '7/1 Adjustable': 6.625,
+      'Interest-Only 7/1 Adjustable': 6.625,
+      '30 Year Fixed': 6.625,
+      'Interest-Only 30 Year Fixed': 6.625
+    }
+  },
+  '680-699': {
+    '3-year': {
+      '5/1 Adjustable': 6.875,
+      'Interest-Only 5/1 Adjustable': 6.875,
+      '7/1 Adjustable': 6.875,
+      'Interest-Only 7/1 Adjustable': 6.875,
+      '30 Year Fixed': 6.875,
+      'Interest-Only 30 Year Fixed': 7.0
+    },
+    '5-year': {
+      '5/1 Adjustable': 6.75,
+      'Interest-Only 5/1 Adjustable': 6.75,
+      '7/1 Adjustable': 6.75,
+      'Interest-Only 7/1 Adjustable': 6.75,
+      '30 Year Fixed': 6.75,
+      'Interest-Only 30 Year Fixed': 6.875
+    },
+    '7-year': {
+      '5/1 Adjustable': 6.5,
+      'Interest-Only 5/1 Adjustable': 6.5,
+      '7/1 Adjustable': 6.5,
+      'Interest-Only 7/1 Adjustable': 6.625,
+      '30 Year Fixed': 6.625,
+      'Interest-Only 30 Year Fixed': 6.625
+    }
+  },
+  '700-719': {
+    '3-year': {
+      '5/1 Adjustable': 6.625,
+      'Interest-Only 5/1 Adjustable': 6.625,
+      '7/1 Adjustable': 6.625,
+      'Interest-Only 7/1 Adjustable': 6.75,
+      '30 Year Fixed': 6.75,
+      'Interest-Only 30 Year Fixed': 6.75
+    },
+    '5-year': {
+      '5/1 Adjustable': 6.5,
+      'Interest-Only 5/1 Adjustable': 6.625,
+      '7/1 Adjustable': 6.5,
+      'Interest-Only 7/1 Adjustable': 6.625,
+      '30 Year Fixed': 6.625,
+      'Interest-Only 30 Year Fixed': 6.625
+    },
+    '7-year': {
+      '5/1 Adjustable': 6.375,
+      'Interest-Only 5/1 Adjustable': 6.375,
+      '7/1 Adjustable': 6.375,
+      'Interest-Only 7/1 Adjustable': 6.375,
+      '30 Year Fixed': 6.375,
+      'Interest-Only 30 Year Fixed': 6.5
+    }
+  },
+  '720-739': {
+    '3-year': {
+      '5/1 Adjustable': 6.5,
+      'Interest-Only 5/1 Adjustable': 6.625,
+      '7/1 Adjustable': 6.625,
+      'Interest-Only 7/1 Adjustable': 6.625,
+      '30 Year Fixed': 6.625,
+      'Interest-Only 30 Year Fixed': 6.625
+    },
+    '5-year': {
+      '5/1 Adjustable': 6.5,
+      'Interest-Only 5/1 Adjustable': 6.5,
+      '7/1 Adjustable': 6.5,
+      'Interest-Only 7/1 Adjustable': 6.5,
+      '30 Year Fixed': 6.5,
+      'Interest-Only 30 Year Fixed': 6.625
+    },
+    '7-year': {
+      '5/1 Adjustable': 6.25,
+      'Interest-Only 5/1 Adjustable': 6.25,
+      '7/1 Adjustable': 6.25,
+      'Interest-Only 7/1 Adjustable': 6.375,
+      '30 Year Fixed': 6.375,
+      'Interest-Only 30 Year Fixed': 6.375
+    }
+  },
+  '740-759': {
+    '3-year': {
+      '5/1 Adjustable': 6.5,
+      'Interest-Only 5/1 Adjustable': 6.625,
+      '7/1 Adjustable': 6.625,
+      'Interest-Only 7/1 Adjustable': 6.625,
+      '30 Year Fixed': 6.625,
+      'Interest-Only 30 Year Fixed': 6.625
+    },
+    '5-year': {
+      '5/1 Adjustable': 6.5,
+      'Interest-Only 5/1 Adjustable': 6.5,
+      '7/1 Adjustable': 6.5,
+      'Interest-Only 7/1 Adjustable': 6.5,
+      '30 Year Fixed': 6.5,
+      'Interest-Only 30 Year Fixed': 6.625
+    },
+    '7-year': {
+      '5/1 Adjustable': 6.25,
+      'Interest-Only 5/1 Adjustable': 6.25,
+      '7/1 Adjustable': 6.25,
+      'Interest-Only 7/1 Adjustable': 6.375,
+      '30 Year Fixed': 6.375,
+      'Interest-Only 30 Year Fixed': 6.375
+    }
+  },
+  '760-779': {
+    '3-year': {
+      '5/1 Adjustable': 6.5,
+      'Interest-Only 5/1 Adjustable': 6.625,
+      '7/1 Adjustable': 6.5,
+      'Interest-Only 7/1 Adjustable': 6.625,
+      '30 Year Fixed': 6.625,
+      'Interest-Only 30 Year Fixed': 6.625
+    },
+    '5-year': {
+      '5/1 Adjustable': 6.375,
+      'Interest-Only 5/1 Adjustable': 6.5,
+      '7/1 Adjustable': 6.5,
+      'Interest-Only 7/1 Adjustable': 6.5,
+      '30 Year Fixed': 6.5,
+      'Interest-Only 30 Year Fixed': 6.5
+    },
+    '7-year': {
+      '5/1 Adjustable': 6.25,
+      'Interest-Only 5/1 Adjustable': 6.25,
+      '7/1 Adjustable': 6.25,
+      'Interest-Only 7/1 Adjustable': 6.25,
+      '30 Year Fixed': 6.25,
+      'Interest-Only 30 Year Fixed': 6.375
+    }
+  },
+  'Over 780': {
+    '3-year': {
+      '5/1 Adjustable': 6.5,
+      'Interest-Only 5/1 Adjustable': 6.625,
+      '7/1 Adjustable': 6.5,
+      'Interest-Only 7/1 Adjustable': 6.625,
+      '30 Year Fixed': 6.625,
+      'Interest-Only 30 Year Fixed': 6.625
+    },
+    '5-year': {
+      '5/1 Adjustable': 6.375,
+      'Interest-Only 5/1 Adjustable': 6.5,
+      '7/1 Adjustable': 6.5,
+      'Interest-Only 7/1 Adjustable': 6.5,
+      '30 Year Fixed': 6.5,
+      'Interest-Only 30 Year Fixed': 6.5
+    },
+    '7-year': {
+      '5/1 Adjustable': 6.25,
+      'Interest-Only 5/1 Adjustable': 6.25,
+      '7/1 Adjustable': 6.25,
+      'Interest-Only 7/1 Adjustable': 6.25,
+      '30 Year Fixed': 6.25,
+      'Interest-Only 30 Year Fixed': 6.375
+    }
+  }
+};
 
 function toNumber(value, fallback = 0) {
   const numeric = Number(value);
@@ -337,6 +536,179 @@ function calculateLoanMetrics(input) {
   };
 }
 
+function normalizeDscrInputs(input) {
+  const refinance = isAffirmative(input.refinance);
+  const prepaymentPenaltyRaw = String(input.prepayment_penalty ?? input.prepaymentPenalty ?? '3-year').trim();
+  const prepaymentPenalty = DSCR_PREPAY_OPTIONS.includes(prepaymentPenaltyRaw) ? prepaymentPenaltyRaw : '3-year';
+  const ficoBucket = String(input.fico_bucket ?? input.ficoBucket ?? input.est_fico ?? '').trim();
+  const loanAmount = toNumber(input.loan_amount ?? input.loanAmount ?? 0, 0);
+  const purchasePrice = toNumber(input.purchase_price ?? input.purchasePrice ?? 0, 0);
+  const estimatedPropertyValue = toNumber(input.estimated_property_value ?? input.estimatedPropertyValue ?? 0, 0);
+  const remainingMortgage = toNumber(input.remaining_mortgage ?? input.remainingMortgage ?? 0, 0);
+  const monthlyRent = toNumber(input.monthly_rent ?? input.monthlyRent ?? 0, 0);
+  const annualInsurance = toNumber(input.annual_insurance ?? input.annualInsurance ?? 0, 0);
+  const annualTaxes = toNumber(input.annual_taxes ?? input.annualTaxes ?? 0, 0);
+  const monthlyHoa = toNumber(input.monthly_hoa ?? input.monthlyHOA ?? 0, 0);
+  const propertyState = String(input.property_state ?? input.propertyState ?? '').trim().toUpperCase();
+  const propertyType = String(input.property_type ?? input.propertyType ?? '').trim();
+
+  return {
+    refinance,
+    ficoBucket,
+    prepaymentPenalty,
+    loanAmount,
+    purchasePrice,
+    estimatedPropertyValue,
+    remainingMortgage,
+    monthlyRent,
+    annualInsurance,
+    annualTaxes,
+    monthlyHoa,
+    propertyState,
+    propertyType
+  };
+}
+
+function getDscrLtvAdjustment(ltv, refinance) {
+  if (ltv <= 0.6) return 0;
+  if (ltv <= 0.7) return 0.125;
+  if (ltv <= 0.75) return 0.25;
+  if (!refinance && ltv <= 0.8) return 0.25;
+  return null;
+}
+
+function calculateInterestOnlyPayment(loanAmount, annualRatePct) {
+  return loanAmount * (annualRatePct / 100) / 12;
+}
+
+function calculateAmortizedPayment(loanAmount, annualRatePct, years = 30) {
+  const monthlyRate = annualRatePct / 100 / 12;
+  const months = years * 12;
+  if (monthlyRate <= 0) return loanAmount / months;
+  return loanAmount * ((monthlyRate * ((1 + monthlyRate) ** months)) / (((1 + monthlyRate) ** months) - 1));
+}
+
+function validateDscrEligibility(normalized) {
+  const {
+    refinance,
+    loanAmount,
+    purchasePrice,
+    estimatedPropertyValue,
+    ficoBucket,
+    prepaymentPenalty
+  } = normalized;
+  const errors = [];
+
+  if (!ficoBucket || !DSCR_RATE_MATRIX[ficoBucket]) {
+    errors.push('Please select a valid FICO score bucket.');
+  }
+
+  if (!prepaymentPenalty || !DSCR_PREPAY_OPTIONS.includes(prepaymentPenalty)) {
+    errors.push('Please select a valid prepayment penalty term.');
+  }
+
+  if (loanAmount < DSCR_MIN_LOAN_AMOUNT) {
+    errors.push('Minimum loan amount is $100,000.');
+  }
+
+  if (refinance) {
+    if (estimatedPropertyValue <= 0) {
+      errors.push('Estimated Property Value is required for refinance.');
+    }
+  } else if (purchasePrice <= 0) {
+    errors.push('Purchase Price is required for purchase loans.');
+  }
+
+  const denominator = refinance ? estimatedPropertyValue : purchasePrice;
+  const ltv = denominator > 0 ? loanAmount / denominator : null;
+  const maxLtv = refinance ? DSCR_MAX_REFINANCE_LTV : DSCR_MAX_PURCHASE_LTV;
+  if (ltv !== null && ltv > maxLtv) {
+    const maxLoanAllowed = denominator * maxLtv;
+    errors.push(`Max allowed loan for this deal is ${formatCurrencyDollar(maxLoanAllowed)}.`);
+  }
+
+  return {
+    errors,
+    ltv,
+    maxLtv
+  };
+}
+
+function formatCurrencyDollar(value) {
+  return `$${Math.round(toNumber(value, 0)).toLocaleString('en-US')}`;
+}
+
+function calculateDscrMetrics(input) {
+  const normalized = normalizeDscrInputs(input);
+  const {
+    refinance,
+    ficoBucket,
+    prepaymentPenalty,
+    loanAmount,
+    purchasePrice,
+    estimatedPropertyValue,
+    remainingMortgage,
+    monthlyRent,
+    annualInsurance,
+    annualTaxes,
+    monthlyHoa
+  } = normalized;
+
+  const eligibility = validateDscrEligibility(normalized);
+  const { ltv } = eligibility;
+  const ltvAdjustment = ltv === null ? null : getDscrLtvAdjustment(ltv, refinance);
+  const errors = [...eligibility.errors];
+
+  const isEligible = errors.length === 0;
+  const maxLoanAllowed = (refinance ? estimatedPropertyValue : purchasePrice) * (refinance ? DSCR_MAX_REFINANCE_LTV : DSCR_MAX_PURCHASE_LTV);
+  const loanProducts = [];
+
+  if (isEligible) {
+    const matrixByPenalty = DSCR_RATE_MATRIX[ficoBucket]?.[prepaymentPenalty] || {};
+    for (const product of DSCR_PRODUCTS) {
+      const baseRate = toNumber(matrixByPenalty[product.key], 0);
+      if (baseRate <= 0) continue;
+      const finalRate = baseRate + toNumber(ltvAdjustment, 0);
+      const monthlyPayment = product.amortized
+        ? calculateAmortizedPayment(loanAmount, finalRate, 30)
+        : calculateInterestOnlyPayment(loanAmount, finalRate);
+
+      const monthlyInsurance = annualInsurance / 12;
+      const monthlyTaxes = annualTaxes / 12;
+      const dscr = monthlyRent > 0
+        ? monthlyRent / (monthlyPayment + monthlyInsurance + monthlyTaxes + monthlyHoa)
+        : null;
+
+      loanProducts.push({
+        term: product.key,
+        rate: Number(finalRate.toFixed(3)),
+        monthly_payment: roundMoney(monthlyPayment),
+        dscr: dscr === null || !Number.isFinite(dscr) ? null : Number(dscr.toFixed(2)),
+        dscr_minimum: dscr === null ? null : 1.0,
+        dscr_status: dscr === null ? null : (dscr >= 1.0 ? 'Qualifies' : 'Does Not Qualify')
+      });
+    }
+  }
+
+  return {
+    is_eligible: isEligible,
+    errors,
+    mode: refinance ? 'refinance' : 'purchase',
+    ltv: ltv === null ? null : roundPercent(ltv),
+    ltv_adjustment: ltvAdjustment === null ? null : Number(ltvAdjustment.toFixed(3)),
+    loan_amount: roundMoney(loanAmount),
+    min_loan: roundMoney(DSCR_MIN_LOAN_AMOUNT),
+    max_loan: roundMoney(maxLoanAllowed > 0 ? maxLoanAllowed : 0),
+    purchase_price: roundMoney(purchasePrice),
+    estimated_property_value: roundMoney(estimatedPropertyValue),
+    remaining_mortgage: roundMoney(remainingMortgage),
+    prepayment_penalty: prepaymentPenalty,
+    fico_bucket: ficoBucket,
+    loan_products: loanProducts
+  };
+}
+
 module.exports = {
-  calculateLoanMetrics
+  calculateLoanMetrics,
+  calculateDscrMetrics
 };
