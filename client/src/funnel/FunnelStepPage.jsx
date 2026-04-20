@@ -2230,10 +2230,23 @@ export default function FunnelStepPage() {
     });
     if (!nextRoute) return;
 
+    const shouldUseRentalCalculator = (
+      nextRoute.startsWith('/rate-calculator')
+      && (
+        String(answers?.loan_program || '').toLowerCase() === 'rental'
+        || stepId.startsWith('rental')
+        || String(resolvedNextValue?.loan_program || '').toLowerCase() === 'rental'
+      )
+    );
+
+    const routeWithMode = shouldUseRentalCalculator
+      ? `${nextRoute}${nextRoute.includes('?') ? '&' : '?'}mode=dscr`
+      : nextRoute;
+
     if (applicationId) {
-      navigate(`${nextRoute}?applicationId=${applicationId}`);
+      navigate(`${routeWithMode}${routeWithMode.includes('?') ? '&' : '?'}applicationId=${applicationId}`);
     } else {
-      navigate(nextRoute);
+      navigate(routeWithMode);
     }
 
     void (async () => {
