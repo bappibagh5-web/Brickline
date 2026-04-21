@@ -1,5 +1,14 @@
 import StepLayout from '../StepLayout.jsx';
 
+function highlightBusiness(title) {
+  return String(title || '').split('business').map((part, idx, arr) => (
+    <span key={`${part}-${idx}`}>
+      {part}
+      {idx < arr.length - 1 ? <span className="text-[#6f97ff]">business</span> : null}
+    </span>
+  ));
+}
+
 export default function EntityNameStep({
   title,
   value,
@@ -38,5 +47,5 @@ export default function EntityNameStep({
     </div>
   );
 
-  return <StepLayout title={title} content={content} />;
+  return <StepLayout title={highlightBusiness(title)} content={content} />;
 }
