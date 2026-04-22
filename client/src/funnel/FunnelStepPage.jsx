@@ -2522,7 +2522,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'propertyAddress' || stepId === 'rentalPropertyAddress' ? (
+        {stepId === 'propertyAddress' || stepId === 'rentalPropertyAddress' || stepId === 'financePropertyAddress' ? (
           <AddressStep
             {...sharedProps}
             title={step.title || ''}
@@ -2537,7 +2537,45 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'rentalExpectedClosingDate' ? (
+        {stepId === 'eligibilityConfirm' ? (
+          <div className="pt-2">
+            <StepRenderer
+              step={step}
+              value={value}
+              setValue={setStepValue}
+              onGoBack={handleBack}
+              onNext={handleNext}
+              canProceed={canProceed}
+              saving={saving}
+              initializing={initializing}
+              error={error}
+              submitError={submitError}
+              submitSuccess={submitSuccess}
+              applicationId={applicationId}
+              apiBaseUrl={apiBaseUrl}
+              onSubmit={handleSubmitForReview}
+            />
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleBack}
+                className="inline-flex h-11 min-w-[88px] items-center justify-center rounded-lg border border-[#d4dbeb] bg-white px-4 text-sm font-semibold text-[#4d5d86] transition-all duration-150 hover:bg-[#f5f8ff]"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={!canProceed}
+                className="inline-flex h-11 min-w-[110px] items-center justify-center rounded-lg bg-gradient-to-r from-[#2f54eb] to-[#2145df] px-5 text-sm font-semibold text-white transition-all duration-150 disabled:bg-[#cfd8ea] disabled:text-white/85"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {stepId === 'rentalExpectedClosingDate' || stepId === 'preferredSigningDate' ? (
           <div className="pt-2">
             <StepRenderer
               step={step}
@@ -2588,7 +2626,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'rentalBorrowerDetails' ? (
+        {stepId === 'rentalBorrowerDetails' || stepId === 'borrowerDetails' ? (
           <StepRenderer
             step={step}
             value={value}
