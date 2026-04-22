@@ -568,9 +568,7 @@ export default function RateCalculatorPage() {
       };
       await saveApplicationStep(apiBaseUrl, effectiveApplicationId, 'calculator_results', calculatorResultsPayload);
 
-      const nextRoute = loanProgram === 'rental'
-        ? '/m/rental/confirmation'
-        : '/m/standardBorrower/reviewSubmit';
+      const nextRoute = '/m/standardBorrower/eligibility';
       navigate(`${nextRoute}?applicationId=${effectiveApplicationId}`);
     } catch (saveError) {
       setError(saveError.message || 'Failed to save selected loan product.');
