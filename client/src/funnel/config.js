@@ -26,7 +26,7 @@ export const funnelConfig = {
     step_key: 'rental_experience_level',
     route: '/m/rental/experience',
     key: 'rental_experience_level',
-    title: 'How many investment properties have you financed or refinanced in the last 24 months?',
+    title: 'How many properties have you financed in the last 24 months?',
     options: [
       { label: 'None', value: 'none' },
       { label: '1-4 properties', value: 'one_four' },

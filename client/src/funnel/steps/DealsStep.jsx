@@ -2,10 +2,15 @@ import { ArrowRight } from 'lucide-react';
 import StepLayout from '../StepLayout.jsx';
 
 function highlightDeals(title) {
-  return title.split('completed deals').map((part, idx, arr) => (
+  const normalizedTitle = String(title || '');
+  const highlightWord = normalizedTitle.toLowerCase().includes('financed')
+    ? 'financed'
+    : 'completed deals';
+
+  return normalizedTitle.split(highlightWord).map((part, idx, arr) => (
     <span key={`${part}-${idx}`}>
       {part}
-      {idx < arr.length - 1 ? <span className="text-[#2f54eb]">completed deals</span> : null}
+      {idx < arr.length - 1 ? <span className="text-[#6f97ff]">{highlightWord}</span> : null}
     </span>
   ));
 }
