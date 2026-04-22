@@ -2539,21 +2539,27 @@ export default function FunnelStepPage() {
 
         {stepId === 'eligibilityConfirm' ? (
           <div className="pt-2">
-            <StepRenderer
-              step={step}
-              value={value}
-              setValue={setStepValue}
-              onGoBack={handleBack}
-              onNext={handleNext}
-              canProceed={canProceed}
-              saving={saving}
-              initializing={initializing}
-              error={error}
-              submitError={submitError}
-              submitSuccess={submitSuccess}
-              applicationId={applicationId}
-              apiBaseUrl={apiBaseUrl}
-              onSubmit={handleSubmitForReview}
+            <StepLayout
+              title={step.title || ''}
+              subtitle={step.description || ''}
+              content={(
+                <StepRenderer
+                  step={step}
+                  value={value}
+                  setValue={setStepValue}
+                  onGoBack={handleBack}
+                  onNext={handleNext}
+                  canProceed={canProceed}
+                  saving={saving}
+                  initializing={initializing}
+                  error={error}
+                  submitError={submitError}
+                  submitSuccess={submitSuccess}
+                  applicationId={applicationId}
+                  apiBaseUrl={apiBaseUrl}
+                  onSubmit={handleSubmitForReview}
+                />
+              )}
             />
             <div className="mt-5 flex items-center justify-between gap-3">
               <button
