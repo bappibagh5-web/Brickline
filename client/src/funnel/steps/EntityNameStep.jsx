@@ -4,7 +4,7 @@ function highlightBusiness(title) {
   return String(title || '').split('business').map((part, idx, arr) => (
     <span key={`${part}-${idx}`}>
       {part}
-      {idx < arr.length - 1 ? <span className="text-[#6f97ff]">business</span> : null}
+      {idx < arr.length - 1 ? <span className="text-[#2f54eb]">business</span> : null}
     </span>
   ));
 }
