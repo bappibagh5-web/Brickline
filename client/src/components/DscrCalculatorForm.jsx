@@ -165,6 +165,16 @@ export default function DscrCalculatorForm({
         )}
 
         <label className="grid gap-1.5">
+          <FieldLabel>Prop. Acquisition Date</FieldLabel>
+          <input
+            type="date"
+            value={form.prop_acquisition_date || ''}
+            onChange={(event) => onFormChange('prop_acquisition_date', event.target.value)}
+            className={inputClass}
+          />
+        </label>
+
+        <label className="grid gap-1.5">
           <FieldLabel>Prepayment Penalty</FieldLabel>
           <select
             value={form.prepayment_penalty}

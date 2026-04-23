@@ -61,6 +61,7 @@ const DSCR_DEFAULTS = {
   purchase_price: '$300,000',
   estimated_property_value: '$450,000',
   remaining_mortgage: '$420,000',
+  prop_acquisition_date: '',
   prepayment_penalty: '3-year',
   monthly_rent: '',
   annual_insurance: '',
@@ -232,6 +233,10 @@ export default function RateCalculatorPage() {
                 ? formatCurrencyInput(calculatorInputs.estimated_property_value)
                 : prev.estimated_property_value),
           prepayment_penalty: data.prepayment_penalty || calculatorInputs.prepayment_penalty || prev.prepayment_penalty,
+          prop_acquisition_date:
+            data.prop_acquisition_date
+            || calculatorInputs.prop_acquisition_date
+            || prev.prop_acquisition_date,
           monthly_rent:
             data.monthly_rent !== undefined
               ? formatCurrencyInput(data.monthly_rent)
@@ -304,6 +309,7 @@ export default function RateCalculatorPage() {
             loan_amount: loanAmount,
             refinance: form.refinance,
             prepayment_penalty: form.prepayment_penalty,
+            prop_acquisition_date: form.prop_acquisition_date || null,
             purchase_price: purchasePrice,
             estimated_property_value: estimatedPropertyValue,
             remaining_mortgage: parseCurrencyInput(form.remaining_mortgage)
@@ -405,6 +411,7 @@ export default function RateCalculatorPage() {
     form.owned_six_months,
     form.personally_guaranteed,
     form.prepayment_penalty,
+    form.prop_acquisition_date,
     form.property_rehab,
     form.property_type,
     form.property_state,
@@ -525,6 +532,7 @@ export default function RateCalculatorPage() {
             loan_amount: parseCurrencyInput(form.loan_amount),
             refinance: form.refinance,
             prepayment_penalty: form.prepayment_penalty,
+            prop_acquisition_date: form.prop_acquisition_date || null,
             purchase_price: purchasePrice,
             estimated_property_value: parseCurrencyInput(form.estimated_property_value),
             remaining_mortgage: remainingMortgage,
