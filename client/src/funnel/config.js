@@ -1,6 +1,7 @@
 const EXPERIENCE_STANDARD = ['none', 'one_two'];
 const EXPERIENCE_PRO = ['three_four', 'five_plus'];
 const RENTAL_EXPERIENCE_DISQUALIFY = ['none'];
+const NEW_CONSTRUCTION_EXPERIENCE_DISQUALIFY = ['none', 'one_property'];
 
 export const funnelConfig = {
   loanProgram: {
@@ -17,9 +18,79 @@ export const funnelConfig = {
     next: {
       rental: 'rentalExperience',
       fix_flip: 'dealsLast24',
-      new_construction: 'dealsLast24',
+      new_construction: 'newConstructionExitsLast60',
       unsure: 'dealsLast24'
     }
+  },
+
+  newConstructionExitsLast60: {
+    step_key: 'new_construction_exits_last_60',
+    route: '/m/newConstruction/exitsLast60',
+    key: 'new_construction_exits_last_60',
+    title: 'How many new construction projects have you exited in the last 60 months?',
+    options: [
+      { label: 'None', value: 'none' },
+      { label: '1 property', value: 'one_property' },
+      { label: '2-4 properties', value: 'two_four' },
+      { label: '5 or more properties', value: 'five_plus' }
+    ],
+    next: ({ value }) => (
+      NEW_CONSTRUCTION_EXPERIENCE_DISQUALIFY.includes(value)
+        ? 'newConstructionDisqualification'
+        : 'newConstructionPropertyState'
+    )
+  },
+
+  newConstructionDisqualification: {
+    step_key: 'new_construction_disqualification',
+    route: '/m/newConstruction/disqualified',
+    title: 'This new construction program requires prior completed exits.',
+    description: 'Please select another financing path to continue with Brickline.',
+    type: 'disqualification',
+    next: null
+  },
+
+  newConstructionPropertyState: {
+    step_key: 'new_construction_property_state',
+    route: '/m/newConstruction/property-state',
+    key: 'property_state',
+    title: 'Which state is your property located in?',
+    type: 'select',
+    next: 'newConstructionLeadCapture'
+  },
+
+  newConstructionLeadCapture: {
+    step_key: 'new_construction_lead_capture',
+    route: '/m/newConstruction/lead-capture',
+    key: 'borrower',
+    title: 'You’re one step away from seeing your financing path',
+    type: 'leadCapture',
+    next: ({ isAuthenticated }) => (isAuthenticated ? 'newConstructionEntityOwnership' : 'accountCreationFlow')
+  },
+
+  newConstructionEntityOwnership: {
+    step_key: 'new_construction_entity_question',
+    route: '/m/newConstruction/entity-ownership',
+    key: 'new_construction_has_entity',
+    title: 'Do you hold title to your investment properties in an entity?',
+    options: [
+      { label: 'Yes', value: 'yes' },
+      { label: 'No', value: 'no' }
+    ],
+    next: {
+      yes: 'newConstructionEntityName',
+      no: 'newConstructionDisqualification'
+    }
+  },
+
+  newConstructionEntityName: {
+    step_key: 'new_construction_entity_name',
+    route: '/m/newConstruction/entity-name',
+    key: 'entity_name',
+    title: 'What is your business entity name?',
+    type: 'input',
+    inputType: 'text',
+    next: 'rateCalculator'
   },
 
   rentalExperience: {
@@ -340,6 +411,9 @@ function getPostAuthStep(answers, isAuthenticated) {
   const loanProgram = answers?.loan_program;
   if (loanProgram === 'rental') {
     return 'rentalEntityOwnership';
+  }
+  if (loanProgram === 'new_construction') {
+    return 'newConstructionEntityOwnership';
   }
 
   return getEntityStepByExperience(answers);

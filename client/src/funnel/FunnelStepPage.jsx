@@ -39,6 +39,12 @@ const LAST_FUNNEL_ROUTE_KEY = 'brickline:last-funnel-route';
 
 const ONBOARDING_STEP_ORDER = {
   loanProgram: 1,
+  newConstructionExitsLast60: 2,
+  newConstructionDisqualification: 3,
+  newConstructionPropertyState: 3,
+  newConstructionLeadCapture: 4,
+  newConstructionEntityOwnership: 6,
+  newConstructionEntityName: 7,
   rentalExperience: 2,
   rentalPersonalHome: 3,
   rentalDisqualification: 3,
@@ -1744,7 +1750,7 @@ function StepRenderer({
     return (
       <div className="mt-6 space-y-4">
         <div className="rounded-xl border border-[#f2b8b8] bg-[#fff5f5] p-4 text-sm text-[#8f2a2a]">
-          <p className="font-semibold">This scenario is not eligible for Rental (DSCR).</p>
+          <p className="font-semibold">This scenario is not eligible for this financing path.</p>
           <p className="mt-1">Please choose another financing path to continue.</p>
         </div>
       </div>
@@ -1818,11 +1824,16 @@ export default function FunnelStepPage() {
     || location.pathname.startsWith('/m/rental')
     || (stepId === 'accountCreationFlow' && answers?.loan_program === 'rental')
   );
+  const isNewConstructionFlow = Boolean(
+    answers?.loan_program === 'new_construction'
+    || location.pathname.startsWith('/m/newConstruction')
+    || (stepId === 'accountCreationFlow' && answers?.loan_program === 'new_construction')
+  );
   const isPostCalculatorStep = POST_CALCULATOR_STEP_IDS.has(stepId);
   const onboardingStepNumber = isPostCalculatorStep
     ? null
     : (stepId === 'accountCreationFlow'
-      ? (isRentalFlow ? 6 : 4)
+      ? (isRentalFlow || isNewConstructionFlow ? 5 : 4)
       : (ONBOARDING_STEP_ORDER[stepId] || null));
   const onboardingTotalSteps = 8;
   const onboardingProgressLabel = isPostCalculatorStep ? 'Final details' : '';
@@ -1848,7 +1859,13 @@ export default function FunnelStepPage() {
     if (stepId === 'rentalExperience') {
       return 'Tell us about your experience so we can tailor your DSCR options.';
     }
+    if (stepId === 'newConstructionExitsLast60') {
+      return 'Tell us about your new construction experience so we can tailor your options.';
+    }
     if (stepId === 'rentalLeadCapture') {
+      return 'Enter your details to continue your application.';
+    }
+    if (stepId === 'newConstructionLeadCapture') {
       return 'Enter your details to continue your application.';
     }
     if (stepId === 'dealsLast24') {
@@ -2454,7 +2471,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'dealsLast24' || stepId === 'rentalExperience' ? (
+        {stepId === 'dealsLast24' || stepId === 'rentalExperience' || stepId === 'newConstructionExitsLast60' ? (
           <DealsStep
             {...sharedProps}
             title={step.title || ''}
@@ -2467,7 +2484,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'propertyState' || stepId === 'rentalPropertyState' ? (
+        {stepId === 'propertyState' || stepId === 'rentalPropertyState' || stepId === 'newConstructionPropertyState' ? (
           <StateStep
             {...sharedProps}
             title={step.title || ''}
@@ -2478,7 +2495,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {stepId === 'leadCapture' || stepId === 'rentalLeadCapture' ? (
+        {stepId === 'leadCapture' || stepId === 'rentalLeadCapture' || stepId === 'newConstructionLeadCapture' ? (
           <LeadStep
             {...sharedProps}
             title={step.title || ''}
@@ -2500,7 +2517,7 @@ export default function FunnelStepPage() {
           </div>
         ) : null}
 
-        {(stepId === 'standardEntityQuestion' || stepId === 'proEntityQuestion' || stepId === 'rentalPersonalHome' || stepId === 'rentalEntityOwnership') ? (
+        {(stepId === 'standardEntityQuestion' || stepId === 'proEntityQuestion' || stepId === 'rentalPersonalHome' || stepId === 'rentalEntityOwnership' || stepId === 'newConstructionEntityOwnership') ? (
           <EntityStep
             {...sharedProps}
             title={step.title || ''}
@@ -2512,7 +2529,7 @@ export default function FunnelStepPage() {
           />
         ) : null}
 
-        {(stepId === 'standardEntityName' || stepId === 'proEntityName' || stepId === 'rentalEntityName') ? (
+        {(stepId === 'standardEntityName' || stepId === 'proEntityName' || stepId === 'rentalEntityName' || stepId === 'newConstructionEntityName') ? (
           <EntityNameStep
             {...sharedProps}
             title={step.title || ''}
@@ -2685,7 +2702,7 @@ export default function FunnelStepPage() {
           </div>
         ) : null}
 
-        {stepId === 'rentalDisqualification' ? (
+        {stepId === 'rentalDisqualification' || stepId === 'newConstructionDisqualification' ? (
           <div className="pt-2">
             <StepLayout
               title={step.title || ''}
@@ -2693,7 +2710,7 @@ export default function FunnelStepPage() {
               content={(
                 <div className="space-y-4">
                   <div className="rounded-xl border border-[#f2b8b8] bg-[#fff5f5] p-4 text-sm text-[#8f2a2a]">
-                    <p className="font-semibold">This route cannot proceed with DSCR.</p>
+                    <p className="font-semibold">This route cannot proceed for this financing path.</p>
                     <p className="mt-1">Please go back and choose another financing path.</p>
                   </div>
                   <div className="mt-4 flex items-center justify-between gap-3">
